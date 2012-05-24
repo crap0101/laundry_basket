@@ -44,54 +44,35 @@ import itertools as it
 import os
 import sys
 import random
+import textwrap
 import time
 
 import pygame
 
+try:
+    from bumpo.gameObjects import GenericGameObject, Grid
+    bumpo_import_err = False
+except ImportError as err:
+    if __name__ == '__main__':
+        bumpo_import_err = err
+    else:
+        raise
+
+
+### SOME CONSTANTS ###
+
 _VERSION = '0.3'
+H_DESCRIPTION = __doc__
 
 COLOR_LIVE = (50,205,50,255)
 COLOR_DEAD = (0,0,0,255)
 CELL_COLORS = (COLOR_DEAD, COLOR_LIVE)
-
 DEF_SCR_MODE = pygame.FULLSCREEN
-
-### PARSER DEF, HELP STRINGS AND OTHER STUFFS ###
-
-# DISPLAY HELP STRINGS
-H_DENSITY = 'Density for the cell in the the universe to fill with.'
-H_DELAY = 'The time (in milliseconds) between generations.'
-H_COLUMNS = 'Number of columns'
-H_ROWS = 'Number of rows'
-H_HEIGHT = "Window height. Default to 0 (fullscreen if -W is 0 too)."
-H_WIDTH = "Window width. Default to 0 (fullscreen if -H is 0 too)."
-H_OPTVAL = """the initial pattern, must be a string of binary digits.
-0 means a dead cell, 1 means a live cell. If the pattern is too short to fill
-the universe, it will be repeated until every cell got a value.
-If the pattern oversize the universe, the excess will be discarded."""
-H_SCR_MODE = """The display mode. SCR_MODE must be one of recognized
-pygame's constant for the display, eg:
-    FULLSCREEN    for a fullscreen display,
-    DOUBLEBUF     is recommended for HWSURFACE or OPENGL,
-    HWSURFACE     for hardware accelerated (only in FULLSCREEN),
-    OPENGL        for an opengl renderable display,
-    RESIZABLE     to make the display window resizeable,
-    NOFRAME       for a display window with no border or controls.
-For example, to get a fullscreen display, you should pass `-s FULLSCREEN`.
-You can include many mode names, useful if you want to combine
-multiple types of modes, eg: -s RESIZABLE OPENGL .
-If no size argument or any other modes are specified, fall in FULLSCREEN mode.
-WARNING: some mode could not be available on your machine."""
-
-# MISC HELP STRING
-H_PRINTT = "at the end of the game, print the inital table."
-H_PRINTG = "at the end of the game, print the number of generations."
-H_DESCRIPTION = __doc__
-
-# OTHER CONSTANTS
 SCR_MODE_STRINGS = ('FULLSCREEN', 'DOUBLEBUF', 'HWSURFACE',
                     'OPENGL', 'RESIZABLE', 'NOFRAME')
 
+
+### FUNCTIONS ###
 
 def get_parsed (args=None):
     """
@@ -99,37 +80,58 @@ def get_parsed (args=None):
     using argparse and return a Namespace object.
     """
     parser = argparse.ArgumentParser(
-        description=H_DESCRIPTION,
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description=textwrap.dedent(H_DESCRIPTION),
+    formatter_class=argparse.RawDescriptionHelpFormatter)
     # display options
     display = parser.add_argument_group('Display Options')
     display.add_argument('-d', '--density',
                          dest='density', type=int, default=0,
-                         metavar='NUM', help=H_DENSITY)
+                         metavar='NUM', help="cell's density in the universe")
     display.add_argument('-D', '--delay',
-                         dest='delay', type=int, default=300,
-                         metavar='NUM', help=H_DELAY)
+                         dest='delay', type=int, default=300, metavar='NUM',
+                         help='milliseconds delay between generations')
     display.add_argument('-r', '--rows',
-                         dest='rows', type=int, default=20,
-                         metavar='NUM', help=H_ROWS)
+                         dest='rows', type=int, default=20, metavar='NUM',
+                         help='Number of rows, default: %(default)s')
     display.add_argument('-c', '--columns',
-                         dest='cols', type=int, default=20,
-                         metavar='NUM', help=H_COLUMNS)
+                         dest='cols', type=int, default=20, metavar='NUM',
+                         help='Number of columns, default %(default)s')
     display.add_argument('-i', '--initial',
                          dest='optvalues', type=str, default=None,
-                         metavar='STRING', help=H_OPTVAL)
+                         metavar='STRING', help="""the initial pattern, must be
+                         a string of binary digits. 0 for a dead cell, 1 for a
+                         live cell. If the pattern is too short to fill the
+                         universe, it will be repeated until every cell got a
+                         state, unless the -f/--zero-fill option is used; in
+                         that case the remaining cells will be dead cells.
+                         If the pattern oversize the universe, the excess
+                         will be discarded""")
     display.add_argument('-f', '--zero-fill',
-                         action='store_true', dest='zfill', help='empty fill')
+                         action='store_true', dest='zfill',
+                         help='fill remaining cell with zeros')
     display.add_argument('-H', '--height',
                          dest='h', type=int, default=0,
-                         metavar='NUM', help=H_HEIGHT)
+                         metavar='NUM', help='Window height')
     display.add_argument('-W', '--width',
                          dest='w', type=int, default=0,
-                         metavar='NUM', help=H_WIDTH)
+                         metavar='NUM', help='Window width')
     display.add_argument('-s', '--scr-mode',
-                         dest='scr_mode', default=(),
-                         nargs='+', metavar='SCR_MODE',
-                         choices=SCR_MODE_STRINGS, help=H_SCR_MODE)
+                         dest='scr_mode', default=(), nargs='+',
+                         metavar='SCR_MODE', choices=SCR_MODE_STRINGS,
+                         help="""
+The display mode. SCR_MODE must be one of recognized pygame's
+constant for the display, eg:
+    FULLSCREEN    for a fullscreen display,
+    DOUBLEBUF     is recommended for HWSURFACE or OPENGL,
+    HWSURFACE     for hardware accelerated (only in FULLSCREEN),
+    OPENGL        for an opengl renderable display,
+    RESIZABLE     to make the display window resizeable,
+    NOFRAME       for a display window with no border or controls.
+For example, to get a fullscreen display, you should pass -s FULLSCREEN.
+You can include many mode names, useful if you want to combine
+multiple types of modes, eg: -s RESIZABLE OPENGL .
+If no size argument or any other modes are specified, fall in FULLSCREEN mode.
+WARNING: some mode could not be available on your machine.""")
     # misc options
     parser.add_argument('-b', '--bumpo-packagedir',
                         dest='bumpo', metavar='PATH',
@@ -137,16 +139,18 @@ def get_parsed (args=None):
     parser.add_argument('-v', '--version',
                         action='version', version=_VERSION)
     parser.add_argument('-p', '--print-inittable',
-                        dest='printt', action='store_true', help=H_PRINTT)
+                        dest='printt', action='store_true',
+                        help="at the end of the game, print the inital table.")
     parser.add_argument('-g', '--print-gen',
-                        dest='printg', action='store_true', help=H_PRINTG)
+                        dest='printg', action='store_true',
+                        help="print the number of generations reached.")
     return parser.parse_args(args)
 
 
 def check_mode (modelist):
     """
     Returns the pygame's video mode for the display combining the modes
-    in `modelist' or raise an AttributeError if some modes are unknown.
+    in *modelist* or raise an AttributeError if some modes are unknown.
     """
     mode = 0
     try:
@@ -224,9 +228,10 @@ class ConwayGame (object):
         self.neighbors = tuple(
             Point(*p) for p in it.product((-1,0,1), (-1,0,1)) if any(p))
         self.inittable = self.table[:]
+        self.radius = min(self.pyGrid[0,0].rect.size)/2
 
     def in_grid (self, point):
-        """Return True if `point' is in grid."""
+        """Return True if *point* is in grid."""
         return (-1 < point.x < self.nrows) and (-1 < point.y < self.ncols)
 
     def check_alive (self, row, col):
@@ -238,17 +243,16 @@ class ConwayGame (object):
                        [Point(p.x+row, p.y+col) for p in self.neighbors])
         return sum(self.table[p.x*self.ncols+p.y] for p in nearp)
 
-    def display (self):
-        """display the actual generation."""
-        radius = min(self.pyGrid[0,0].rect.size)/2
-        for value, cell in zip(self.table, self.pyGrid):
-            pygame.draw.circle(
-                self.screen, CELL_COLORS[value], cell.rect.center, radius, 0)
-        pygame.display.update()
-
     def check_evo (self):
         """Return False if the universe don't evolve anymore."""
         return self.table != self.old_table
+
+    def display (self):
+        """display the actual generation."""
+        for value, cell in zip(self.table, self.pyGrid):
+            pygame.draw.circle(
+                self.screen, CELL_COLORS[value], cell.rect.center, self.radius, 0)
+        pygame.display.update()
 
     def play (self):
         """Compute and display another generation in the universe."""
@@ -298,7 +302,9 @@ if __name__ == '__main__':
     args = get_parsed()
     if args.bumpo:
         sys.path.insert(0, args.bumpo)
-    from bumpo.gameObjects import GenericGameObject, Grid
+        from bumpo.gameObjects import GenericGameObject, Grid
+    elif bumpo_import_err:
+        raise bumpo_import_err
     pygame.init()
     screen = pygame.display.set_mode((args.w, args.h),
                                      check_mode(args.scr_mode))
