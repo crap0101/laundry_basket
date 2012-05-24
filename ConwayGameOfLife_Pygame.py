@@ -38,8 +38,8 @@ COMMANDS:
  * mouse left button: when the evolution is paused, flip the cell state.
 """
 
+import array
 import argparse
-import copy
 import itertools as it
 import os
 import sys
@@ -118,6 +118,8 @@ def get_parsed (args=None):
     display.add_argument('-i', '--initial',
                          dest='optvalues', type=str, default=None,
                          metavar='STRING', help=H_OPTVAL)
+    display.add_argument('-f', '--zero-fill',
+                         action='store_true', dest='zfill', help='empty fill')
     display.add_argument('-H', '--height',
                          dest='h', type=int, default=0,
                          metavar='NUM', help=H_HEIGHT)
@@ -158,12 +160,10 @@ def check_mode (modelist):
 ### CLASSES ###
 
 class Point (object):
-    """Point class with some convenience methods."""
+    """(incomplete) Point class."""
     def __init__ (self, x, y):
         self.x = x
         self.y = y
-        self._start_cpos = -1
-        self._coord = self._start_cpos
     @property
     def values (self):
         """The Point coordinates."""
@@ -172,6 +172,8 @@ class Point (object):
     def values (self, new_values):
         """Set the Point coordinates (x,y) to *newvalues."""
         self.x, self.y = new_values
+    def __eq__ (self, other_point):
+        return self.values == other_point
     def __add__ (self, other_point):
         try:
             return Point(self.x + other_point.x, self.y + other_point.y)
@@ -179,17 +181,16 @@ class Point (object):
             return Point(self.x + other_point[0], self.y + other_point[1])
     __radd__ = __add__
     def __iadd__ (self, other_point):
-        self.values = self.__add__(other_point).values
+        self.values = (self + other_point).values
         return self
-    def __iter__  (self):
-        return self
-    def next (self):
+    def __sub__ (self, other_point):
         try:
-            self._coord += 1
-            return self.values[self._coord]
-        except IndexError:
-            self._coord = self._start_cpos
-            raise StopIteration
+            return Point(self.x - other_point.x, self.y - other_point.y)
+        except AttributeError:
+            return Point(self.x - other_point[0], self.y - other_point[1])
+    def __isub__ (self, other_point):
+        self.values = (self - other_point).values
+        return self
     def __str__ (self):
         return "%s" % (self.values,)
     def __repr__ (self):
@@ -198,7 +199,7 @@ class Point (object):
 
 class ConwayGame (object):
     """A class which implements the Conway's game of life with pygame."""
-    def __init__ (self, screen, nrows, ncols, optvalues, density, delay):
+    def __init__ (self, screen, nrows, ncols, optvalues, density, delay, zfill):
         self.screen = screen or pygame.display.set_mode((0,0), DEF_SCR_MODE)
         self.pyGrid = Grid(nrows, ncols)
         self.pyGrid.build(GenericGameObject, cell_size=(2,3))
@@ -206,42 +207,43 @@ class ConwayGame (object):
         self.delay = (10, delay)
         self.nrows = nrows
         self.ncols = ncols
-        self.old_table = []
+        self.old_table = None
         self.generations = 0
-        self.table = [[False]*ncols for i in range(nrows)]
+        self.table = array.array('I', [0 for x in range(ncols * nrows)])
         if not optvalues:
             for i in range(self.nrows):
                 for j in range(int(min(nrows,ncols)**0.5+density)):
-                    self.table[i][random.randint(0, ncols-1)] = True
+                    self.table[i*random.randint(0, ncols-1)] = 1
         else:
-            cycle = it.cycle(optvalues)
-            for row in range(self.nrows):
-                for col in range(self.ncols):
-                    self.table[row][col] = bool(int(cycle.next()))
-        self.neighbors = [Point(i, j) for i in range(-1,2)
-                          for j in range(-1,2) if (i or j)]
-        self.inittable = copy.deepcopy(self.table)
+            if zfill:
+                cycle = it.chain(map(int, optvalues), it.cycle([0]))
+            else:
+                cycle = it.cycle(map(int, optvalues))
+            for p in range(self.nrows*self.ncols):
+                self.table[p] = next(cycle)
+        self.neighbors = tuple(
+            Point(*p) for p in it.product((-1,0,1), (-1,0,1)) if any(p))
+        self.inittable = self.table[:]
 
-    def get_neighbor (self, point):
+    def in_grid (self, point):
         """Return True if `point' is in grid."""
-        x, y = point
-        return (-1 < x < self.nrows) and (-1 < y < self.ncols)
+        return (-1 < point.x < self.nrows) and (-1 < point.y < self.ncols)
 
     def check_alive (self, row, col):
         """
         Check if the cell in the grid at (row,col) is alive,
         returning its number of neighbors.
         """
-        _neighbors = [p+(row, col) for p in self.neighbors]
-        return sum(self.table[p.x][p.y]
-                   for p in _neighbors if self.get_neighbor(p))
+        nearp = filter(self.in_grid,
+                       [Point(p.x+row, p.y+col) for p in self.neighbors])
+        return sum(self.table[p.x*self.ncols+p.y] for p in nearp)
 
     def display (self):
         """display the actual generation."""
         radius = min(self.pyGrid[0,0].rect.size)/2
-        for (row, col), cell in self.pyGrid.items():
-            color = self.table[row][col]
-            pygame.draw.circle(self.screen, CELL_COLORS[color], cell.rect.center, radius, 0)
+        for value, cell in zip(self.table, self.pyGrid):
+            pygame.draw.circle(
+                self.screen, CELL_COLORS[value], cell.rect.center, radius, 0)
         pygame.display.update()
 
     def check_evo (self):
@@ -250,21 +252,22 @@ class ConwayGame (object):
 
     def play (self):
         """Compute and display another generation in the universe."""
-        new_table = copy.deepcopy(self.table)
+        new_table = self.table[:]
         for row in range(self.nrows):
             for col in range(self.ncols):
                 alive_val = self.check_alive(row, col)
-                if self.table[row][col]:
+                cpos = row*self.ncols+col
+                if self.table[cpos]:
                     if alive_val not in (2, 3):
-                        new_table[row][col] = False
+                        new_table[cpos] = False
                 elif alive_val == 3:
-                    new_table[row][col] = True
-        self.table = copy.deepcopy(new_table)
+                    new_table[cpos] = True
+        self.table = new_table[:]
         self.generations += 1
         self.display()
         if not self.check_evo():
             return False
-        self.old_table = copy.deepcopy(self.table)
+        self.old_table = self.table[:]
         return True
 
     def start (self):
@@ -281,9 +284,9 @@ class ConwayGame (object):
                         self._playing ^= True
                     elif mouse_buttons[0] and not self._playing:
                         mouse_pos = pygame.mouse.get_pos()
-                        for (row,col), cell in self.pyGrid.items():
+                        for p, cell in enumerate(self.pyGrid):
                             if cell.rect.collidepoint(mouse_pos):
-                                self.table[row][col] ^= True
+                                self.table[p] ^= True
                         self.display()
             if self._playing:
                 if not self.play():
@@ -300,9 +303,20 @@ if __name__ == '__main__':
     screen = pygame.display.set_mode((args.w, args.h),
                                      check_mode(args.scr_mode))
     g = ConwayGame(screen, args.rows, args.cols,
-                   args.optvalues, args.density, args.delay)
+                   args.optvalues, args.density, args.delay, args.zfill)
     g.start()
     if args.printt:
         print repr(g.inittable)
     if args.printg:
         print repr(g.generations)
+
+
+"""
+# Example for a Glider Gun shooting gliders:
+
+%prog -i 000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000010100000000000000000000000000000000000000000000000000000000000110000001100000000000011000000000000000000000000000000000000000000000001000100001100000000000011000000000000000000000000000000000000110000000010000010001100000000000000000000000000000000000000000000000000110000000010001011000010100000000000000000000000000000000000000000000000000000000010000010000000100000000000000000000000000000000000000000000000000000000001000100000000000000000000000000000000000000000000000000000000000000000000110000000000000000000000000000000000000000000000000000000000 -c 72 -r 45 -f
+
+# Another, the smallest
+%prog -i 000000000000000000000000100000000000000000000000000000000010100000000000000000000000110000001100000000000011000000000001000100001100000000000011110000000010000010001100000000000000110000000010001011000010100000000000000000000010000010000000100000000000000000000001000100000000000000000000000000000000110000000000000000000000 -c 36 -r 36 -f
+
+"""
