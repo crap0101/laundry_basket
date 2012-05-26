@@ -1,4 +1,7 @@
 
+# author: Marco Chieppa (aka crap0101)
+# license: public domain
+
 import imp
 import os
 import sys
