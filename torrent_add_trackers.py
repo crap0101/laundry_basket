@@ -64,15 +64,23 @@ def add_trackers (path, trackers, backup_suffix='.bk'):
 if __name__ == '__main__':
     p = argparse.ArgumentParser()
     p.add_argument('file', help='torrent file')
-    p.add_argument('trackers', nargs='+', help='trakers to add')
+    p.add_argument('trackers', nargs='*', help='trakers to add')
     p.add_argument('-b', '--backup', dest='backup', nargs='?', const='.bk',
-                   default='', metavar='SUFFIX', help='make a backup of the'
-                   ' original file, renamed adding SUFFIX. Default: %(const)s')
+                   default='', metavar='SUFFIX', help='make a backup of the '
+                   'original file, renamed adding SUFFIX. Default: %(const)s')
     p.add_argument('-f', '--from-file', dest='from_file', metavar='PATH',
-                   help='read trackers for PATH (one per line).')
+                   help='read trackers for PATH (one per line). '
+                        'Empty lines or lines starting with "#" are ignored.')
     p.add_argument('-v', '--version', action='version', version=_VERSION)
     args = p.parse_args()
     if args.from_file:
         with open(args.from_file) as tfile:
-            args.trackers.extend(t.strip() for t in tfile)
+            from_file = []
+            for tr in tfile:
+                tr = tr.strip()
+                if tr and not tr.startswith('#'):
+                    from_file.append(tr)
+            args.trackers.extend(from_file)
+    if not args.trackers:
+        p.error("No trackers to add!")
     add_trackers(args.file, args.trackers, args.backup)
