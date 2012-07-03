@@ -25,6 +25,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -57,8 +58,9 @@ main(int argc, char **argv)
     {
         puts(USAGE);
         return 1;
-    }        
-    unsigned char t = 0, color[3];
+    }
+    unsigned char tflag;
+    unsigned char color[3];
     int 
         i, n, j,
         red, green, blue,
@@ -80,9 +82,7 @@ main(int argc, char **argv)
 
     if ((fout = fopen(outfile, "w")) == NULL)
     {
-        char emsg [strlen(outfile)+6];
-        sprintf(emsg, "fopen:%s", outfile);
-        perror(emsg);
+        perror("fopen");
         return 1;
     }
     fprintf(fout, "P3\n#Mandelbrot\n%d %d\n255\n", w, h); 
@@ -94,6 +94,7 @@ main(int argc, char **argv)
         {
             succ.real = xmin + n*dx;
             newsucc = succ;
+            tflag = 0;
             for (j=0; j < iter; j++)
             {
                 newsucc = c_sum(c_mult(newsucc, newsucc), succ);
@@ -105,11 +106,17 @@ main(int argc, char **argv)
                     color[0] = (red > 128) ? 128 : red;
                     color[1] = (green > 128) ? 128 : green;
                     color[2] = (blue > 255) ? 255 : blue;
-                    t = 1;
+                    tflag = 1;
                     break;
                 }
             }
-            t ? ({write_number(color,fout);t=0;}) : fprintf(fout,"0\n0\n0\n");
+            if (tflag == 1)
+            {
+                write_number(color,fout);
+                tflag = 0;
+            }
+            else
+                fprintf(fout,"0\n0\n0\n");
         }
     }
     fclose(fout);
