@@ -156,7 +156,7 @@ function dcheck ()
                 echo -e "\nh: $file\t$dir2/$append"
             fi
         fi
-        _i="\ri: checking file $count/$total\tErrors:$errors\tSkipped:$skipped"
+        _i="\ri: checking file $count/$total Errors:$errors Skipped:$skipped"
         echo -ne "$_i"
     done
     echo
