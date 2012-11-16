@@ -24,22 +24,35 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-_VERSION = '0.2'
-DESCRIPTION = """
-A self-learning tic-tac-toe (aka wick wack woe, aka tris,
-aka tria, aka zero per) program
-"""
-
-import shelve
+# std imports
+import argparse
+from collections import defaultdict
 from contextlib import closing
 import itertools as it
-import time
-import random
-import argparse
-import operator as op
-from collections import defaultdict
 import logging
+import operator as op
+import random
+import shelve
+import textwrap
+import time
+# external import, see https://gitorious.org/bumpo
+from bumpo.gameUtils import Table
+from bumpo.gameUtils import EmptyObject
+
+# some constants
+_VERSION = '0.3 (2012-11-16)'
+DESCRIPTION = """
+A self-learning tic-tac-toe (aka wick wack woe, aka tris, \
+aka tria, aka zero per) program.
+"""
+EPILOG = textwrap.dedent("""
+The first time the program must be run with the {-g FILE} option, e.g.
+% prog -g FILE
+to create the initial data needed to play; FILE is the output file in which \
+store these data. After that, games can be played (human vs human, \
+machine vs human or even machine vs machine).
+The program can be trained (-t option) to enhance its ability.
+""")
 
 DEBUG_LEVELS = ('DEBUG', 'INFO', 'WARNING')
 DEBUG_LEVEL = 'WARNING'
@@ -75,171 +88,6 @@ def gen_data (outfile):
                     else:
                         state_tables.append(new_table)
             data[str(state)] = list(zip(state_tables, it.repeat(0)))
-
-
-
-class Table (object):
-    def __init__ (self, rows, columns, empty='', seq=()):
-        """
-        Create a Table of *row* x *columns* size.
-        *empty* is the value for the empty cells (default '').
-        If *seq* is provided, must be a sequence; the table will be
-        populated with it's items (missing positions are filled
-        using *empty*).
-        """
-        super(Table, self).__init__()
-        self._row = rows
-        self._col = columns
-        self._empty = empty
-        self._grid = dict(
-            it.takewhile(lambda args: args[0] != empty,
-                         it.izip_longest(
-                            self.iter_pos(), seq, fillvalue=empty)))
-
-    def __contains__ (self, item):
-        return item in self._grid.values()
-
-    def __eq__ (self, other):
-        for pos, value in self.items():
-            if other[pos] != value:
-                return False
-        return True
-
-    def __ne__ (self, other):
-        return not (self == other)
-
-    def __getitem__(self, item):
-        return self._grid[item]
-
-    def __setitem__ (self, item, value):
-        self._grid[item] = value
-
-    def __iter__(self):
-        return iter(self._grid[pos] for pos in self.iter_pos())
-
-    def __len__ (self):
-        return len(self._grid)
-
-    def __str__ (self):
-        return "Table object (%d, %d) at %s" % (
-            self._row, self._col, hex(id(self)))
-
-    @property
-    def empty (self):
-        return self._empty
-
-    @property
-    def isfull (self):
-        """Return True if the table has been completely filled."""
-        for value in self.values():
-            if value == self.empty:
-                return False
-        return True
-
-    @property
-    def columns (self):
-        """The table's columns, as a list of lists."""
-        cols = []
-        for col in range(self._col):
-            cols.append(list(self[row, col] for row in range(self._row)))
-        return cols
-
-    @property
-    def rows (self):
-        """The table's rows, as a list of lists."""
-        rows = []
-        for row in range(self._row):
-            rows.append(list(self[row, col] for col in range(self._col)))
-        return rows
-
-    def copy (self):
-        """Returns a copy of the table."""
-        new_table = Table(self._row, self._col, self.empty)
-        for pos, value in self.items():
-            new_table[pos] = value
-        return new_table
-
-    def diagonal (self, row=0, col=0, topright=False):
-        """
-        Returns a sequence of the table's values for the diagonal
-        starting at *row* and *col*.
-        *row* and *col* default to zero, i.e. returns the major diagonal.
-        If *topright* is True, return the topright-to-bottomleft diagonal.
-        Raise KeyError for *row* or *col* values out of index.
-        """
-        values = []
-        endcol = (self._col, -1)[topright]
-        stepcol = (1, -1)[topright]
-        for pos in zip(range(row, self._row), range(col, endcol, stepcol)):
-            values.append(self[pos])
-        return values
-
-    def free (self):
-        """Yields the table's empty positions."""
-        for pos, value in self.items():
-            if value == self.empty:
-                yield pos
-
-    def get (self, symbol):
-        """Yelds the table's positions which holds *symbol*."""
-        for pos, item in self.items():
-            if item == symbol:
-                yield pos
-
-    def items (self):
-        """Yields pairs of ((row, col), value) for each cell in the table."""
-        for pos in self.iter_pos():
-            yield pos, self[pos]
-
-    def iter_pos (self):
-        """Yields the coordinates (row, column) of each cell in the table."""
-        for row in range(self._row):
-            for col in range(self._col):
-                yield row, col
-
-    def major_diagonal (self):
-        """Returns the values on the table's major (or main) diagonal.""" 
-        return self.diagonal()
-
-    def minor_diagonal (self):
-        """Returns the values on the table's minor diagonal.""" 
-        values = []
-        for pos in zip(range(self._row), range(self._col-1, -1, -1)):
-            values.append(self[pos])
-        return values
-
-    def pprint (self, format=None):
-        """Pretty print row-by-row using *format* or the default one."""
-        format = format or "%s "*self._col
-        for row in self.rows:
-            print format % tuple(row)            
-
-    def reflected_h (self):
-        """Returns a (horizontal) reflected _copy_ of the table."""
-        seq = it.chain(*list(x[::-1] for x in self.rows))
-        return Table(self._row, self._col, empty=self.empty, seq=seq)
-
-    def reflected_v (self):
-        """Returns a (vertical) reflected _copy_ of the table."""
-        seq = it.chain(*self.rows[::-1])
-        return Table(self._row, self._col, empty=self.empty, seq=seq)
-
-    def rotated (self):
-        """Return a rotated _copy_ of the table."""
-        seq = it.chain(*list(x[::-1] for x in zip(*self.rows)))
-        return Table(self._col, self._row, empty=self.empty, seq=seq)
-
-    def transposed (self):
-        """Returns a transposed _copy_ of the table."""
-        new = Table(self._col, self._row)
-        for pos, val in zip(new.iter_pos(), it.chain(*self.columns)):
-            new[pos] = val
-        return new
-
-    def values (self):
-        """Yields the value of each cell in the table."""
-        for _, value in self.items():
-            yield value
 
 
 def transposed_all (table):
@@ -408,7 +256,9 @@ def no_human (data_file, sleep=1):
 
 if __name__ == '__main__':
     def get_parsed ():
-        parser = argparse.ArgumentParser(description=DESCRIPTION)
+        parser = argparse.ArgumentParser(
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=DESCRIPTION, epilog=EPILOG)
         parser.add_argument('-v', '--version',
                             action='version', version=_VERSION)
         parser.add_argument('data_file', metavar='FILE',
@@ -451,7 +301,13 @@ if __name__ == '__main__':
             d[no_human(parsed.data_file, sleep=0)] += 1
         print "results", d
     elif parsed.only_human:
-        logging.warning('to be implemented')
+        p1 = HumanPlayer(parsed.symbol)
+        p2 = HumanPlayer(APLAYERS[not APLAYERS.index(parsed.symbol)])
+        w = game(p1, p2)
+        if w is not None:
+            print "winner: %s" % w
+        else:
+            print "even."
     elif parsed.no_human:
         no_human(parsed.data_file)
     else:
@@ -460,10 +316,10 @@ if __name__ == '__main__':
         p2.remember(parsed.data_file)
         w = game(p1, p2)
         if w == p2:
-            print "%s win" % p2.symbol
+            print "winner: %s" % p2.symbol
             p2.win = True
         elif w == p1:
-            print "%s win" % p1.symbol
+            print "winner: %s" % p1.symbol
         else:
             p2.win = None
             print "even."
