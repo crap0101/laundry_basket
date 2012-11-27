@@ -18,11 +18,11 @@
 // @grant    GM_deleteValue 
 // @grant    GM_log
 // @namespace    https://gitorious.org/~crap0101
-// @include    /^http://\w+.bakeca.it/*/
+// @include    /^http://\w+\.bakeca\.it//
 // @run-at    document-end
 // ==/UserScript==
 
-var ShitReg = /Il nostro Cliente[:]?|Per ditta di servizi|per azienda|per\s(azienda(\scliente)?|cliente)|per\s(important[ei]|prestigios[iao]|primari[ao]?)\s(client[ei]|azienda|realtà)|ali spa|consorzio elpe|Knet Human Resources|HUMANGEST SPA|TEMPORARY SPA|Adecco|randstad|manpower|kelly|Synergie|Viesse|Gi Group|Cooperjob|Agenzia per il Lavoro/im;
+var ShitReg = /Il nostro Cliente[:]?|Per ditta di servizi|per azienda|per\s(azienda(\scliente)?|cliente)|per\s(important[ei]|prestigios[iao]|primari[ao]?)\s(client[ei]|azienda|realtà)|ali spa|consorzio elpe|Viesse|Knet Human Resources|HUMANGEST SPA|TEMPORARY SPA|Adecco|randstad|manpower|kelly|Synergie|Viesse|Gi Group|Cooperjob|Agenzia per il Lavoro/im;
 
 var bakekapurge = function () {
     var divs = document.getElementsByTagName("div");
@@ -30,9 +30,11 @@ var bakekapurge = function () {
 	var div = divs[i];
 	if (div.className.indexOf("annuncio-item") == 0) {
 	    var elems = div.getElementsByTagName("p");
+            //console.log(elems.className);
 	    for (var j=0; j<elems.length; j++) {
 		var el = elems[j];
 		if (el.className == "text" && ShitReg.exec(el.innerHTML)) {
+		    //console.log(el.innerHTML);
 		    div.parentNode.removeChild(div);
 		    break;
 		}
