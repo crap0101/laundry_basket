@@ -22,7 +22,7 @@
 // @run-at    document-end
 // ==/UserScript==
 
-var ShitReg = /(\bIl nostro Cliente[:]?\b)|(\bPer ditta di servizi\b)|(\bper\s(azienda(\scliente)?|cliente)\b)|(\bper\s(important[ei]|prestigios[iao]|primari[ao]?)\s(client[ei]|azienda|realtà))|(\b(ali spa|consorzio elpe|Knet Human Resources|HUMANGEST SPA|TEMPORARY SPA|Adecco|randstad|manpower|kelly|Synergie|Viesse|Gi Group|Cooperjob|Agenzia per il Lavoro)\b)/im;
+var ShitReg = /Il nostro Cliente[:]?|Per ditta di servizi|per azienda|per\s(azienda(\scliente)?|cliente)|per\s(important[ei]|prestigios[iao]|primari[ao]?)\s(client[ei]|azienda|realtà)|ali spa|consorzio elpe|Knet Human Resources|HUMANGEST SPA|TEMPORARY SPA|Adecco|randstad|manpower|kelly|Synergie|Viesse|Gi Group|Cooperjob|Agenzia per il Lavoro/im;
 
 var bakekapurge = function () {
     var divs = document.getElementsByTagName("div");
@@ -32,8 +32,9 @@ var bakekapurge = function () {
 	    var elems = div.getElementsByTagName("p");
 	    for (var j=0; j<elems.length; j++) {
 		var el = elems[j];
-		if (el.className == "text" && ShitReg.test(el.innerHTML)) {
+		if (el.className == "text" && ShitReg.exec(el.innerHTML)) {
 		    div.parentNode.removeChild(div);
+		    break;
 		}
 	    }
 	}
