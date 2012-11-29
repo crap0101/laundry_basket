@@ -3,8 +3,8 @@
 ;; start emacs server
 ;;(server-start)
 
-;; custom functions
-;
+;; custom functions ;;
+
 ; custom goto-line
 (defun go-line (num)
   "go to the *num*th line of the current buffer.
@@ -21,14 +21,12 @@ buffer's lines, go to the last line."
             (forward-line (+ (- lines actual-line) num))
           (forward-line (- num actual-line)))))))
 
-
 ; copy-line shortcut
 (defun copy-lines (&optional arg)
   "Copy *arg* lines in the kill ring (default: the current line)."
   (interactive "p")
   (kill-ring-save (line-beginning-position)
 		  (line-beginning-position (+ 1 (if arg arg 1)))))
-
 
 ; run python program
 (defun run-python-program (&optional python-name)
@@ -55,7 +53,7 @@ buffer's lines, go to the last line."
 ;; setting some bindings ;;
 (global-set-key "\C-c\C-r" (lambda () (interactive)
 			     (progn (revert-buffer nil t) (message "%s" "buffer reverted"))))
-; for previously defined funcions
+; for previously defined functions
 (global-set-key "\C-cg" 'go-line)
 (global-set-key "\C-c\C-c" 'copy-lines)
 (global-set-key [f2] 'run-python-program)
@@ -65,39 +63,32 @@ buffer's lines, go to the last line."
 (global-set-key (kbd "<C-mouse-5>") (lambda () (interactive) (text-scale-increase 1)))
 
 
-;; set custom variables
+;; custom variables ;;
 
 ; http://lists.gnu.org/archive/html/emacs-devel/2011-09/msg00350.html
 (setq redisplay-dont-pause t)
-
 ; keep the cursor at the same screen position whenever a scroll command moves it off-window
 (setq scroll-preserve-screen-position t)
-
 ; browser
 (setq browse-url-browser-function 'browse-url-firefox
       browse-url-firefox-program "abrowser")
-
-; enable row and column number
-(line-number-mode t)
-(column-number-mode t)
-
 ; no beep
 (setq visible-bell t)
-
 ; text related
 (setq indent-tabs-mode nil
       tab-width 4
       term-input-autoexpand t
       x-select-enable-clipboard t)
+; columns and rows
+(line-number-mode t)
+(column-number-mode t)
 
-;; set color, faces and similar stuffs
-;
-; default
+
+;; set color, faces and similar stuffs ;;
 
 ; actually back to default color cause shitty monitor
 ; (set-background-color "#000000") ;"#333333")
 ; (set-foreground-color "#33CC00")
-
 (set-face-attribute 'default t
                     :stipple nil
                     :inverse-video nil
@@ -110,11 +101,10 @@ buffer's lines, go to the last line."
                     :height 120
                     :width 'normal
                     :family "DejaVu Sans Mono")
-
 (set-frame-font "DejaVu Sans Mono 15")
 
 
-; erc
+;; erc ;;
 ;(require 'erc-join)
 ;(erc-autojoin-mode 1)
 (setq erc-modules '(autojoin button completion dcc fill irccontrols
@@ -129,7 +119,7 @@ buffer's lines, go to the last line."
       erc-auto-discard-away t
       erc-autoaway-idle-seconds 900)
 
-;; identica-mode
+;; identica-mode ;;
 ;;(load-file "/home/crap0101/.emacs.d/identica-mode.el")
 ;;(require 'identica-mode)
 ;;(setq laconica-server "identi.ca"
