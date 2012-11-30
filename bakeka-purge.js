@@ -26,7 +26,7 @@ var ShitReg = /Il nostro Cliente[:]?|per nostro cliente|Per ditta di servizi|per
 
 var bakekapurge = function () {
     var divs = document.getElementsByTagName("div");
-    for (var i=divs.length-1; i >= 0; i--) { //    for (var i=0; i<divs.length; i++) {
+    for (var i=divs.length-1; i >= 0; i--) {
 	var div = divs[i];
 	if (div.className.indexOf("annuncio-item") == 0) {
 	    var elems = div.getElementsByTagName("p");
