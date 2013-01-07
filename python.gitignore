@@ -1,0 +1,9 @@
+
+# .gitignore for python
+
+build/
+dist/
+sdist/
+
+*~
+*.py[co]
