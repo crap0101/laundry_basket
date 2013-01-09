@@ -61,7 +61,7 @@ except ImportError as err:
 
 ### SOME CONSTANTS ###
 
-_VERSION = '0.3'
+_VERSION = '0.4'
 H_DESCRIPTION = __doc__
 
 COLOR_LIVE = (50,205,50,255)
@@ -206,8 +206,11 @@ class ConwayGame (object):
     def __init__ (self, screen, nrows, ncols, optvalues, density, delay, zfill):
         self.screen = screen or pygame.display.set_mode((0,0), DEF_SCR_MODE)
         self.pyGrid = Grid(nrows, ncols)
-        self.pyGrid.build(GenericGameObject, cell_size=(2,3))
         self.pyGrid.resize(*self.screen.get_size())
+        obj = GenericGameObject()
+        obj.resize(1,1)
+        self.pyGrid.add([obj.copy() for _ in range(nrows*ncols)])
+        self.pyGrid.rebuild()
         self.delay = (10, delay)
         self.nrows = nrows
         self.ncols = ncols
@@ -228,7 +231,7 @@ class ConwayGame (object):
         self.neighbors = tuple(
             Point(*p) for p in it.product((-1,0,1), (-1,0,1)) if any(p))
         self.inittable = self.table[:]
-        self.radius = min(self.pyGrid[0,0].rect.size)/2
+        self.radius = min(self.pyGrid[0,0].size)/2
 
     def in_grid (self, point):
         """Return True if *point* is in grid."""
@@ -249,9 +252,9 @@ class ConwayGame (object):
 
     def display (self):
         """display the actual generation."""
-        for value, cell in zip(self.table, self.pyGrid):
+        for value, cell in zip(self.table, self.pyGrid.values()):
             pygame.draw.circle(
-                self.screen, CELL_COLORS[value], cell.rect.center, self.radius, 0)
+                self.screen, CELL_COLORS[value], cell.center, self.radius, 0)
         pygame.display.update()
 
     def play (self):
