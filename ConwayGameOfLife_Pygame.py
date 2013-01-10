@@ -51,6 +51,7 @@ import pygame
 
 try:
     from bumpo.gameObjects import GenericGameObject, Grid
+    from bumpo.baseObjects import Display
     bumpo_import_err = False
 except ImportError as err:
     if __name__ == '__main__':
@@ -204,9 +205,9 @@ class Point (object):
 class ConwayGame (object):
     """A class which implements the Conway's game of life with pygame."""
     def __init__ (self, screen, nrows, ncols, optvalues, density, delay, zfill):
-        self.screen = screen or pygame.display.set_mode((0,0), DEF_SCR_MODE)
+        self.screen = screen or Display((0,0), DEF_SCR_MODE)
         self.pyGrid = Grid(nrows, ncols)
-        self.pyGrid.resize(*self.screen.get_size())
+        self.pyGrid.resize(*self.screen.size)
         obj = GenericGameObject()
         obj.resize(1,1)
         self.pyGrid.add([obj.copy() for _ in range(nrows*ncols)])
@@ -254,7 +255,7 @@ class ConwayGame (object):
         """display the actual generation."""
         for value, cell in zip(self.table, self.pyGrid.values()):
             pygame.draw.circle(
-                self.screen, CELL_COLORS[value], cell.center, self.radius, 0)
+                self.screen.surfref, CELL_COLORS[value], cell.center, self.radius, 0)
         pygame.display.update()
 
     def play (self):
@@ -291,7 +292,7 @@ class ConwayGame (object):
                         self._playing ^= True
                     elif mouse_buttons[0] and not self._playing:
                         mouse_pos = pygame.mouse.get_pos()
-                        for p, cell in enumerate(self.pyGrid):
+                        for p, cell in enumerate(self.pyGrid.values()):
                             if cell.rect.collidepoint(mouse_pos):
                                 self.table[p] ^= True
                         self.display()
@@ -306,11 +307,11 @@ if __name__ == '__main__':
     if args.bumpo:
         sys.path.insert(0, args.bumpo)
         from bumpo.gameObjects import GenericGameObject, Grid
+        from bumpo.baseObjects import Display
     elif bumpo_import_err:
         raise bumpo_import_err
     pygame.init()
-    screen = pygame.display.set_mode((args.w, args.h),
-                                     check_mode(args.scr_mode))
+    screen = Display((args.w, args.h), check_mode(args.scr_mode))
     g = ConwayGame(screen, args.rows, args.cols,
                    args.optvalues, args.density, args.delay, args.zfill)
     g.start()
