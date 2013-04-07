@@ -22,7 +22,7 @@
 // @run-at    document-end
 // ==/UserScript==
 
-var ShitReg = /Il nostro Cliente[:]?|per nostro cliente|Per ditta di servizi|per azienda|per\s(azienda(\scliente)?|cliente)|per\s(important[ei]|prestigios[iao]|primari[ao]?)\s(client[ei]|azienda|realtà|negozio)|per( una)? società cliente|elektraservices|ali spa|consorzio elpe|ADHR|Gruppo Elpe|Viesse|Knet Human Resources|HUMANGEST SPA|MAW Divisione Permanent|TEMPORARY SPA|Obiettivo Lavoro|Lavoropiù|Adecco|Mirror srl|randstad|manpower|kelly|Trenkwalder|Synergie|Viesse|Elite Executive Research|Gi Group|Cooperjob|Start People|gruppo gedi|Orienta spa|ManpowerGroup|Agenzia per il Lavoro|La filiale di/im;
+var ShitReg = /Il nostro Cliente[:]?|per nostro cliente|Per ditta di servizi|per azienda|per\s(azienda(\scliente)?|cliente)|per\s(important[ei]|prestigios[iao]|primari[ao]?)\s(client[ei]|azienda|realtà|negozio)|per( una)? società cliente|elektraservices|ali spa|consorzio elpe|ADHR|Gruppo Elpe|Viesse|Knet Human Resources|HUMANGEST SPA|MAW Divisione Permanent|TEMPORARY SPA|Obiettivo Lavoro|Lavoropiù|Adecco|Mirror srl|randstad|manpower|kelly|Trenkwalder|Synergie|Viesse|Elite Executive Research|Gi Group|Cooperjob|Start People|GB Job|gruppo gedi|Orienta spa|ManpowerGroup|Agenzia per il Lavoro|HORECA JOB|AXL spa|OFFICE JOB|Elite Ricerca e Selezione|Maxwork|La filiale di/im;
 
 var bakekapurge = function () {
     var divs = document.getElementsByTagName("div");
