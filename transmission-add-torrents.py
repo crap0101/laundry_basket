@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import argparse
 import getpass
@@ -12,8 +13,9 @@ def get_args (args=None):
     p.add_argument('torrents',
                    nargs='+', help='torrents to add')
     p.add_argument('-d', '--download-dir',
-                   dest='dest', default=None, required=True,
-                   help='download directory')
+                   dest='dest', default=None,
+                   help='''download directory (if not provided,
+                   use the transmission's default path)''')
     p.add_argument('-H', '--host',
                    dest='host', default='localhost',
                    help='Transmission RPC host (default: %(default)s)')
@@ -37,6 +39,8 @@ def get_args (args=None):
 
 
 def add_torrents (client, torrents, dest=None):
+    if dest is None:
+        dest = client.session.download_dir
     failed = []
     for t in torrents:
         try:
