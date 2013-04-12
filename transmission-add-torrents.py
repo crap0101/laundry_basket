@@ -12,8 +12,8 @@ def get_args (args=None):
     p.add_argument('torrents',
                    nargs='+', help='torrents to add')
     p.add_argument('-d', '--download-dir',
-                   dest='dest', default=None,
-                   help='download directory (default to the Transmission one)')
+                   dest='dest', default=None, required=True,
+                   help='download directory')
     p.add_argument('-H', '--host',
                    dest='host', default='localhost',
                    help='Transmission RPC host (default: %(default)s)')
