@@ -37,6 +37,12 @@ LOGLEVELS = set_log_levels()
 class MediaTypeError(Exception):
     pass
 
+class RequestError(Exception):
+    pass
+
+class SaveVideoError(Exception):
+    pass
+
 class VideoParser(HTMLParser):
     def __init__(self, *a, **k):
         super().__init__(*a,**k)
@@ -56,7 +62,7 @@ class VideoParser(HTMLParser):
 def get_args (args=None):
     epilog = """---
 Run tests with:
-% {python} -m unittest -v {prog}
+% {python} -Bm unittest -v {prog}
 ---""".format(prog=sys.argv[0], python=sys.executable)
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -70,7 +76,7 @@ Run tests with:
                         default='INFO', metavar='LEVEL',
                         help='set log level: %(choices)s. Default %(default)s')
     parser.add_argument('-s', '--chunk-size',
-                        dest='chunk_size', default=CHUNK_SIZE,
+                        dest='chunk_size', default=CHUNK_SIZE, type=int,
                         metavar='BYTES', help='default: %(default)s')
     parser.add_argument('-S', '--show-media-type',
                         dest='only_show', action='store_true',
@@ -104,13 +110,14 @@ def get_available_types(video_info):
     return avail
 
 def get_request (url):
+    """Returns a request object or raise a RequestError."""
     try:
         req = request.urlopen(url)
         if req is None:
             raise URLError("ERROR: no handler can handles the request")
     except URLError as err:
         logging.getLogger(LOGNAME).error(err)
-        raise
+        raise RequestError('{} <{}>'.format(err, url))
     return req
 
 def video_links (url):
@@ -123,7 +130,7 @@ def video_links (url):
 
     Returns: a generator of the above-mentioned namedtuples
     """
-    get_request()
+    req = get_request(url)
     parser = VideoParser(strict=False)
     parser.feed(req.read().decode('utf-8'))
     for vtype, link in parser.video_links:
@@ -139,12 +146,12 @@ def set_user_agent (user_agent):
 
 def seek_request (req, size, whence=os.SEEK_SET):
     logger = logging.getLogger(LOGNAME)
-    logger.info('seek_request START')
+    logger.debug('seek_request START')
     if req.seekable():
         req.seek(size, whence)
     else:
         req.read(size) #XXX+TODO: read chunks instead
-    logger.info('seek_request END')
+    logger.debug('seek_request END')
 
 def save_stream (stream_in, stream_out, chunk_size):
     read = 0
@@ -164,6 +171,7 @@ def save_video(url, dest=None, chunk_size=CHUNK_SIZE,
     if not re.match('^video/.*', content_type):
         logger.warning("{} seems not a video file [content-type: {}]".format(
                 req.url, content_type))
+        #TODO: add a -i, --interactive option to choose if exit now? Raise an error?
     if dest:
         if os.path.isdir(dest):
             dest = os.path.join(dest, os.path.basename(req.url))
@@ -177,9 +185,13 @@ def save_video(url, dest=None, chunk_size=CHUNK_SIZE,
         read = 0
     if read > 0:
         if not overwrite:            
+            logger.info("Continue saving in {}".format(dest))
             seek_request(req, read)
         else:
+            logger.info("Overwriting existing file {}".format(dest))
+            os.remove(dest)
             read = 0
+    logger.info("start downloading {}".format(req.url))
     while True:
         with open(dest, 'a+b') as out:
             read += save_stream(req, out, chunk_size)
@@ -191,20 +203,21 @@ def save_video(url, dest=None, chunk_size=CHUNK_SIZE,
                     logger.info("download interrupted ({}/{} bytes), "
                                 "resuming...".format(read, length))
                 else:
-                    logger.warning(
+                    raise SaveVideoError(
                         "total size mismatch {} != {}".format(read, length))
-                    break
             else:
                 break
 
 
 def main():
     args = get_args()
-    logging.basicConfig(format='%(name)s [%(levelname)s] %(message)s',
+    logging.basicConfig(format='%(name)s: [%(levelname)s] %(message)s',
                         level=LOGLEVELS[args.loglevel])
     if args.ua:
         set_user_agent(args.ua)
+
     video_info = tuple(video_links(args.url))
+
     available_types = get_available_types(video_info)
     if args.only_show:
         print('available media types:', ','.join(available_types))
@@ -220,7 +233,14 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    logger = logging.getLogger(LOGNAME)
+    try:
+        main()
+    except (RequestError, MediaTypeError, SaveVideoError) as err:
+        logger.error(err)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("User interrupt...")
     sys.exit(0)
 
 
