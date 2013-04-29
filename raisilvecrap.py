@@ -63,7 +63,7 @@ def get_args (args=None):
     epilog = """---
 Run tests with:
 % {python} -Bm unittest -v {prog}
----""".format(prog=sys.argv[0], python=sys.executable)
+---""".format(prog=os.path.basename(sys.argv[0]), python=sys.executable)
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=epilog)
@@ -144,13 +144,20 @@ def set_user_agent (user_agent):
     opener.addheaders = list(headers.items())
     request.install_opener(opener)
 
-def seek_request (req, size, whence=os.SEEK_SET):
+def seek_request (req, size, whence=os.SEEK_SET, chunk_size=CHUNK_SIZE):
     logger = logging.getLogger(LOGNAME)
     logger.debug('seek_request START')
     if req.seekable():
         req.seek(size, whence)
     else:
-        req.read(size) #XXX+TODO: read chunks instead
+        read = 0
+        while read != size:
+            if (size - read) < chunk_size:
+                chunk_size = size - read
+            data = req.read(chunk_size)
+            if not data:
+                raise RequestError("Requested data not available in stream")
+            read += len(data)
     logger.debug('seek_request END')
 
 def save_stream (stream_in, stream_out, chunk_size):
@@ -278,13 +285,18 @@ class TestStreams(unittest.TestCase):
 
     def testSeekRequest(self):
         for i in range(50):
-            data = bytes(random_string(random.randint(5, 200)), 'utf-8')
+            data = bytes(random_string(random.randint(15, 200)), 'utf-8')
             length = len(data)
             size = random.randrange(length)
+            csize = size
             fake_req = io.BytesIO(data)
             if i%2:
                 fake_req.seekable = lambda *a:False
-            seek_request(fake_req, size, 0)
+                if i%3:
+                    csize = csize*random.randint(2,5)
+                else:
+                    csize = csize//3
+            seek_request(fake_req, size, 0, csize)
             self.assertEqual(len(fake_req.read()), length-size)
 
     def testSaveStream(self):
