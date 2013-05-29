@@ -5,7 +5,7 @@
 
   script per greaseamonkey  per eliminare le "offerte" di lavoro
   delle fottute agenzie interinali da *.bakeka.it e altra merda
-  tipo lelemarcheting.
+  tipo telemarketing.
   Scritto di getto e non particolarmente testato.
 */
 
