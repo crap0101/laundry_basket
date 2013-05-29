@@ -61,6 +61,13 @@ class VideoParser(HTMLParser):
 
 def get_args (args=None):
     epilog = """---
+Examples:
+# show available types
+% {prog} 'http://www.rai.tv/dl/RaiTV/programmi/media/ContentItem-7331a60f-37f8-488a-85a8-8cde61f4556b.html#p=' -S
+available media types: DEFAULT,MP4,H264
+# download
+% {prog} 'http://www.rai.tv/dl/RaiTV/programmi/media/ContentItem-7331a60f-37f8-488a-85a8-8cde61f4556b.html#p=' -c -t H264
+
 Run tests with:
 % {python} -Bm unittest -v {prog}
 ---""".format(prog=os.path.basename(sys.argv[0]), python=sys.executable)
@@ -70,7 +77,7 @@ Run tests with:
     parser.add_argument('url', help='url')
     parser.add_argument('-c', '--continue',
                         dest='continue_', action='store_true',
-                        help='when file, try to resume download.')
+                        help='when fails, try to resume download.')
     parser.add_argument('-l', '--log-level',
                         dest='loglevel', choices=tuple(LOGLEVELS.keys()),
                         default='INFO', metavar='LEVEL',
@@ -213,6 +220,7 @@ def save_video(url, dest=None, chunk_size=CHUNK_SIZE,
                     raise SaveVideoError(
                         "total size mismatch {} != {}".format(read, length))
             else:
+                logger.info("download completed")
                 break
 
 
