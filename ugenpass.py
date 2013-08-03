@@ -66,10 +66,18 @@ def ugenpass (symbols, n, randfunc=urandom):
         lst.pop(sum(map(ord, randfunc(n))) % n)
     return ''.join(lst)
 
-def gen (symbols, lengths, times, func=urandom):
+def gen (symbols, lengths, times, func=urandom, unique=False):
+    if unique:
+        def genfunc(sym, n, func):
+            s = ugenpass(sym, n, func)
+            while len(set(s)) < n:
+                s = ''.join(set(s).union(ugenpass(sym, n, func)))
+            return s[:n]
+    else:
+        genfunc = ugenpass
     for _ in range(times):
         for n in lengths:
-            yield ugenpass(symbols, n, func)
+            yield genfunc(symbols, n, func)
 
 # Report functions & utility stuff
 
@@ -140,35 +148,41 @@ def print_report (generated, out=sys.stdout):
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=DESCRIPTION)
     p.add_argument('lengths', nargs='*', default=[11],
-                    type=int, metavar='NUMBER',
+                    type=int, metavar='LENGTH',
                     help='password(s) length, default: 11')
+    p.add_argument('-d', '--distinct', dest='uniq', action='store_true',
+                   help='generate password without repeated characters')
     p.add_argument('-t', '--times', dest='times',
                    type=int, default=1, metavar='NUMBER',
                    help='''repeate the generations %(metavar)s times,
-                   so %%prog 9 8 7 -n 3 generate a total of 9 strings.
+                   so %%prog 9 8 7 -t 3 generate a total of 9 strings.
                    Default: %(default)s, values <= 0 produces no output.''')
-    p.add_argument('-R', '--report', dest='report', nargs='?',
+    p.add_argument('-v', '--version', action='version', version=VERSION)
+    report = p.add_argument_group('I/O and report options')
+    report.add_argument('-o', '--output', dest='out', default='', metavar='FILE',
+                   help='output on %(metavar)s (default: stdout)')
+    report.add_argument('-R', '--report', dest='report', nargs='?',
                    default=_NO_REPORT, choices=(REPORT_ALL, REPORT_ONLY),
                    help="""Also run test and report info about the generation.
                    Optional parameter {r_all} prints also the string already
                    produced, {r_only} doesn't (the option alone means {r_only})
                    """.format(r_all=REPORT_ALL, r_only=REPORT_ONLY))
-    p.add_argument('-o', '--output', dest='out', default='', metavar='FILE',
-                   help='output on %(metavar)s (default: stdout)')
-    p.add_argument('-v', '--version', action='version', version=VERSION)
     args = p.parse_args()
+    if args.uniq and max(args.lengths) > len(SYMBOLS):
+        p.error("some required length exceed the number of available symbols")
     if not args.out or args.out == '-':
         out = sys.stdout
     else:
         out = open(args.out, 'w')
     if args.report != _NO_REPORT:
-        generated = list(gen(SYMBOLS, args.lengths, args.times, urandom))
+        generated = list(
+            gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq))
         print_report(generated, out=out)
         if args.report == REPORT_ALL:
             for g in generated:
                 print(g, file=out)
     else:
-        for x in gen(SYMBOLS, args.lengths, args.times, urandom):
+        for x in gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq):
             print(x, file=out)
     if out != sys.stdout:
         out.close()
