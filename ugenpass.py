@@ -57,8 +57,11 @@ _NO_REPORT = ''
 
 def ugenpass (symbols, n, randfunc=urandom):
     lst = []
-    while len(lst) < n:
-        lst.extend(symbols.intersection(randfunc(n)))
+    _n = n**2
+    while len(lst) < _n:
+        got = list(symbols.intersection(randfunc(n)))
+        if got:
+            lst.append(got[sum(map(ord, randfunc(n))) % len(got)])
     while len(lst) != n:
         lst.pop(sum(map(ord, randfunc(n))) % n)
     return ''.join(lst)
@@ -94,11 +97,27 @@ def print_report (generated, out=sys.stdout):
         for char in string:
             d[char] += 1
     unique_char = len(d)
-    print("* unique strings: {} of {}".format(len(set(generated)), tot_str), file=out)
+    print("* unique strings: {} of {}".format
+          (len(set(generated)), tot_str), file=out)
     print("* unique chars: {}".format(unique_char), file=out)
     print("* total chars: {}".format(tot_char), file=out)
     for k, v in sorted(d.items(), key=itemgetter(1)):
         print("{}: {:.2f}% ({} times)".format(k, 100*v/tot_char, v), file=out)
+    # repeated chars:
+    s_rep_chars = []
+    for g in generated:
+        gs = set(g)
+        if len(gs) != len(g):
+            s_rep_chars.append((g, gs))
+    if s_rep_chars:
+        lrp = len(s_rep_chars)
+        print("* strings with repeated chars: {} of {} ({:.2f}%)".format(
+            lrp, tot_str, 100*lrp/tot_str), file=out)
+        for g, gs in s_rep_chars:
+            print("{}: {}".format(
+                g, ''.join(x for x in gs if g.count(x) > 1)), file=out)
+    else:
+        print("* NO strings with repeated chars found", file=out)
     # sub patterns:
     subp = defaultdict(int)
     for g in generated:
@@ -107,7 +126,7 @@ def print_report (generated, out=sys.stdout):
     tot_subp = sum(subp.values())
     found = dict((k,v) for k,v in subp.items() if v > 1)
     if found:
-        print("* Repeated patterns found ({} of {} ({:.2}%)):".format(
+        print("* Repeated patterns found ({} of {} ({:.2f}%):".format(
             len(found), tot_subp, 100*len(found)/tot_subp), file=out)
         for k,v in sorted(found.items(), key=itemgetter(1)):
             print("{}: found {} times".format(k,v), file=out)
