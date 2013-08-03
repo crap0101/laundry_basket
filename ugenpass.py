@@ -96,7 +96,7 @@ def sub_split (s, min=2):
         for j in range(i+min, l+1):
             yield s[i:j]
 
-def print_report (generated, out=sys.stdout):
+def print_report (generated, symbols, out=sys.stdout):
     """test and report info about the generation"""
     d = defaultdict(int)
     tot_str = len(generated)
@@ -105,6 +105,8 @@ def print_report (generated, out=sys.stdout):
         for char in string:
             d[char] += 1
     unique_char = len(d)
+    print("* Used: {} of {} symbols ({:.2f}%)".format(
+        unique_char, len(symbols), 100*unique_char/len(symbols)), file=out)
     print("* unique strings: {} of {}".format
           (len(set(generated)), tot_str), file=out)
     print("* unique chars: {}".format(unique_char), file=out)
@@ -147,9 +149,9 @@ def print_report (generated, out=sys.stdout):
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description=DESCRIPTION)
-    p.add_argument('lengths', nargs='*', default=[11],
+    p.add_argument('lengths', nargs='*', default=[13],
                     type=int, metavar='LENGTH',
-                    help='password(s) length, default: 11')
+                    help='password(s) length, default: 13')
     p.add_argument('-d', '--distinct', dest='uniq', action='store_true',
                    help='generate password without repeated characters')
     p.add_argument('-t', '--times', dest='times',
@@ -177,7 +179,7 @@ if __name__ == '__main__':
     if args.report != _NO_REPORT:
         generated = list(
             gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq))
-        print_report(generated, out=out)
+        print_report(generated, SYMBOLS, out=out)
         if args.report == REPORT_ALL:
             for g in generated:
                 print(g, file=out)
