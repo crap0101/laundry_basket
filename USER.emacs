@@ -1,7 +1,14 @@
 ;; .emacs init file by crap0101
 
-;; start emacs server
-;;(server-start)
+;; maximize window
+(setq initial-frame-alist '((fullscreen . maximized)))
+
+;; set & start emacs server
+(require 'server)
+;;(setq server-name "emacs-server-main")
+(unless (server-running-p)
+  (server-start)
+  (message (format "server started (%s)" (server-running-p))))
 
 ;; custom functions ;;
 
@@ -110,8 +117,7 @@ buffer's lines, go to the last line."
 (setq erc-modules '(autojoin button completion dcc fill irccontrols
                              list match menu move-to-prompt netsplit
                              networks noncommands readonly ring stamp track)
-      erc-autojoin-channels-alist '(("freenode.net" "#lp-it" "#gnewsense"
-                                    "#gnewsense-dev" "#icecat" "#linux-libre"))
+      erc-autojoin-channels-alist '(("freenode.net" "#hackerforum" "#init1" "#linux-libre"))
       erc-away-nickname nil
       erc-prompt-for-channel-key nil
       erc-public-away-p nil
