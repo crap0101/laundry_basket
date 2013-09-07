@@ -102,8 +102,9 @@ def remove_trackers (path, trackers, use_regex=False, backup_suffix='.bk'):
 if __name__ == '__main__':
     p = argparse.ArgumentParser(
         description="add or remove trackers from a torrent file")
-    p.add_argument('file', help='torrent file')
-    p.add_argument('trackers', nargs='*', help='trakers to add')
+    p.add_argument('files', nargs='+', help='torrent files')
+    p.add_argument('-t', '--trackers', nargs='*', dest='trackers',
+                   help='trakers to add/remove')
     p.add_argument('-b', '--backup', dest='backup', nargs='?', const='.bk',
                    default='', metavar='SUFFIX', help='make a backup of the '
                    'original file, renamed adding SUFFIX. Default: %(const)s')
@@ -129,6 +130,8 @@ if __name__ == '__main__':
         p.error("No trackers to add!")
     trackers = [t.encode(ENC) for t in args.trackers]
     if args.remove:
-        remove_trackers (args.file, trackers, args.use_regex, args.backup)        
+        for file in args.files:
+            remove_trackers (file, trackers, args.use_regex, args.backup)        
     else:
-        add_trackers(args.file, trackers, args.backup)
+        for file in args.files:
+            add_trackers(file, trackers, args.backup)

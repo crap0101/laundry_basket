@@ -94,7 +94,8 @@ def main(file, attrs=(), interactive=False, eprint=False, show_pieces=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Show torrent info.')
-    parser.add_argument('torrent_file', metavar='FILE', help='torrent file.')
+    parser.add_argument('files', nargs='+',
+                        metavar='FILE', help='torrent files.')
     parser.add_argument('-a', '--attributes', dest='attrs', nargs='+',
                         metavar='ATTR', help="Show only this torrent's"
                         ' attributes and exit. Conflicts with'
@@ -115,4 +116,5 @@ if __name__ == '__main__':
     parsed = parser.parse_args()
     if parsed.attrs and parsed.i:
         parser.error('options conflict: -a and -i used together')
-    main(parsed.torrent_file, parsed.attrs, parsed.i, parsed.l, parsed.p)
+    for file in parsed.files:
+        main(file, parsed.attrs, parsed.i, parsed.l, parsed.p)
