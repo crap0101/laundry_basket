@@ -26,7 +26,7 @@
 
 from __future__ import print_function
 import argparse
-from collections import Mapping
+from collections import Mapping, MutableSequence
 import platform
 import sys
 if platform.python_version_tuple()[0] < '3':
@@ -37,13 +37,34 @@ import bencode
 
 _VERSION = '0.3'
 
-def main(file, attrs=(), interactive=False, show_pieces=False):
+def flatlist (seq):
+    res = []
+    for s in seq:
+        if isinstance(s, MutableSequence):
+            res.extend(flatlist(s))
+        else:
+            res.append(s)
+    return res
+
+def main(file, attrs=(), interactive=False, eprint=False, show_pieces=False):
+    if eprint and not interactive:
+        def _print(k,v,sep):
+            if isinstance(v, MutableSequence):
+                for el in flatlist(v):
+                    print(el)
+            else:
+                print(v)
+    else:
+        def _print(*a, **k):
+            print(*a, **k)
     with open(file, 'rb') as file:
         meta = bencode.bdecode(file.read())
     if attrs:
         for attr in attrs:
-            print(attr, meta[attr], sep=': ')
+            _print(attr, meta[attr], sep=': ')
         return
+    if interactive:
+        print(meta.keys())
     for key in meta:
         info = meta[key]
         while True:
@@ -60,11 +81,11 @@ def main(file, attrs=(), interactive=False, show_pieces=False):
                 else:
                     if isinstance(info, Mapping):
                         if not show_pieces:
-                            info.pop('pieces', "No key named 'pieces'")
+                            info.pop('pieces', None)
                         for k, v in info.items():
-                            print(k, v, sep=': ')
+                            _print(k, v, sep=': ')
                     else:
-                        print(key, meta[key], sep=': ')
+                        _print(key, meta[key], sep=': ')
                     break
             except KeyboardInterrupt as e:
                 print()
@@ -76,15 +97,22 @@ if __name__ == '__main__':
     parser.add_argument('torrent_file', metavar='FILE', help='torrent file.')
     parser.add_argument('-a', '--attributes', dest='attrs', nargs='+',
                         metavar='ATTR', help="Show only this torrent's"
-                        ' attributes and exit. With this option, the presence'
-                        ' of the -i/--interactive option is ignored.')
+                        ' attributes and exit. Conflicts with'
+                        ' the -i/--interactive option')
     parser.add_argument('-i', '--interactive', action='store_true',
                         dest='i', help='interactive mode, browse torrent'
-                        ' attributes, if available.')
+                        ' attributes, if available. Conflicts with the'
+                        ' -a/--attributes option')
+    parser.add_argument('-l', '--print-list',
+                        dest='l', action='store_true',
+                        help='in non-interactive mode print in format'
+                        ' suitable for easy parsing (a sort of)')
     parser.add_argument('-p', '--show-pieces', action='store_true',
                         dest='p', help='show torrent pieces. Since this'
                         ' attribute is not human-readable by default'
-                        ' is not displayed, use this option to see them.')
+                        ' is not displayed, use this option to see them')
     parser.add_argument('-v', '--version', action='version', version=_VERSION)
     parsed = parser.parse_args()
-    main(parsed.torrent_file, parsed.attrs, parsed.i, parsed.p)
+    if parsed.attrs and parsed.i:
+        parser.error('options conflict: -a and -i used together')
+    main(parsed.torrent_file, parsed.attrs, parsed.i, parsed.l, parsed.p)
