@@ -25,14 +25,17 @@
 
 
 from __future__ import print_function
+import argparse
+from collections import Mapping
 import platform
+import sys
 if platform.python_version_tuple()[0] < '3':
     input = raw_input
-import bencode
-import sys
-import argparse
 
-_VERSION = '0.2'
+# external import
+import bencode
+
+_VERSION = '0.3'
 
 def main(file, attrs=(), interactive=False, show_pieces=False):
     with open(file, 'rb') as file:
@@ -46,16 +49,16 @@ def main(file, attrs=(), interactive=False, show_pieces=False):
         while True:
             try:
                 if interactive:
-                    if isinstance(info, dict):
+                    if isinstance(info, Mapping):
                         print(key, list(info.keys()))
-                        choice = input("choice: ")
+                        choice = input("choice: ").encode('utf-8')
                         print(info.get(choice,
                                        "{0}: invalid key".format(choice)))
                     else:
                         print(key, meta[key], sep=': ')
                         break
                 else:
-                    if isinstance(info, dict):
+                    if isinstance(info, Mapping):
                         if not show_pieces:
                             info.pop('pieces', "No key named 'pieces'")
                         for k, v in info.items():
