@@ -1,16 +1,18 @@
 /*
- * Mandelbrot 0.6
- * add command line args
- * compile with: gcc -Wall -Wextra -pedantic mandelbrot.c -lm -o mout
- * 
+ * Julia set (v.0.5)
+ * compile with: gcc -Wall -Wextra -pedantic julia.c -lm -o j
+ *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <getopt.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#define FILENAME "mandelbrot.ppm"
+#define FILENAME "julia.ppm"
+
+#define Julia_rp -0.835
+#define Julia_ip -0.2321 
 
 typedef struct {
     double real;
@@ -18,11 +20,12 @@ typedef struct {
 } Complex;
 
 void help (char **);
-double mandelbrot_calc (Complex *, Complex *);
-void write_number (unsigned char *color, FILE *fout);
+double c_abs(Complex c);
+Complex c_mult(Complex, Complex);
+Complex c_sum(Complex, Complex);
+void write_number(unsigned char *color, FILE *fout);
 
-int
-main (int argc, char **args) {
+int main (int argc, char **args) {
   unsigned char t = 0, color[3];
   unsigned int
     i, n, j,
@@ -38,11 +41,13 @@ main (int argc, char **args) {
     ymin = -2,
     ymax = 2;
   double dx, dy;
-  Complex succ, newsucc;
+  Complex julia, succ, newsucc;
   FILE *fout;
   char *filename = NULL;
 
-  while ((opt = getopt(argc, args, "W:H:o:x:X:y:Y:i:h")) != -1) {
+  julia.real = Julia_rp;
+  julia.img = Julia_ip;
+  while ((opt = getopt(argc, args, "W:H:o:x:X:y:Y:i:R:I:h")) != -1) {
     switch (opt) {
     case 'W':
       val = atoi(optarg);
@@ -83,6 +88,12 @@ main (int argc, char **args) {
       }
       iter = val;
       break;
+    case 'R':
+      julia.real = atof(optarg);
+      break;
+    case 'I':
+      julia.real = atof(optarg);
+      break;
     case 'h':
       help(args);
       exit(EXIT_SUCCESS);
@@ -102,7 +113,7 @@ main (int argc, char **args) {
     fprintf(stderr, "Error opening %s\n", FILENAME);
     exit(EXIT_FAILURE);
   }
-  fprintf(fout, "P3\n#Mandelbrot set\n%d %d\n255\n", width, height); 
+  fprintf(fout, "P3\n#Julia set\n%d %d\n255\n", width, height); 
 
   for (i=0; i < height; i++) {
     succ.img = ymin + i*dy;
@@ -110,16 +121,17 @@ main (int argc, char **args) {
       succ.real = xmin + n*dx;
       newsucc = succ;
       for (j=0; j < iter; j++) {
-	if (mandelbrot_calc(&newsucc, &succ) > limit) {
-	  red = 100+j/4;
-	  green = j/2;
-	  blue = 4*j;
-	  color[0] = (red > 128) ? 128 : red;
-	  color[1] = (green > 128) ? 128 : green;
-	  color[2] = (blue > 255) ? 255 : blue;
-	  t = 1;
-	  break;
-	}
+        newsucc = c_sum(c_mult(newsucc, newsucc), julia);
+        if (c_abs(newsucc) > limit) {
+          red = 100+j/4;
+          green = j/2;
+          blue = 4*j;
+          color[0] = (red > 128) ? 128 : red;
+          color[1] = (green > 128) ? 128 : green;
+          color[2] = (blue > 255) ? 255 : blue;
+          t = 1;
+          break;
+        }
       }
       if (t == 1) {
 	write_number(color, fout);
@@ -130,7 +142,7 @@ main (int argc, char **args) {
     }
   }
   fclose(fout);
-  exit(EXIT_SUCCESS);
+  return 0;
 }
 
 void
@@ -139,13 +151,24 @@ write_number (unsigned char *color, FILE *fout) {
 }
 
 double
-mandelbrot_calc (Complex *cn1, Complex *cn2) {
-    Complex m;
-    m.real = cn1->real*cn1->real + (cn1->img*cn1->img)*(-1);
-    m.img = cn1->real*cn1->img + cn1->img*cn1->real;
-    cn1->real = m.real + cn2->real;
-    cn1->img = m.img + cn2->img;
-    return sqrt(cn1->real*cn1->real + cn1->img*cn1->img);
+c_abs (Complex c) {
+  return sqrt(c.real*c.real + c.img*c.img);
+}
+
+Complex
+c_mult (Complex cn1, Complex cn2) {
+  Complex m;
+  m.real = cn1.real*cn2.real + (cn1.img*cn2.img)*(-1);
+  m.img = cn1.real*cn2.img + cn1.img*cn2.real;
+  return m;
+}
+
+Complex
+c_sum (Complex cn1, Complex cn2) {
+  Complex sum;
+  sum.real = cn1.real + cn2.real;
+  sum.img = cn1.img + cn2.img;
+  return sum;
 }
 
 void
@@ -161,6 +184,9 @@ help (char **args) {
 	  "\t-y  y min value (default: -2)\n"
 	  "\t-Y  y max value (default: 2)\n"
 	  "\t-i  number of iterations (default 1024)\n"
+	  "\t-R  real part (default %f)\n"
+	  "\t-I  imag part (default %f)\n"
 	  "\n",
-	  args[0]);
+	  args[0], Julia_rp, Julia_ip);
 }
+

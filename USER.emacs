@@ -130,3 +130,7 @@ buffer's lines, go to the last line."
 ;;(require 'identica-mode)
 ;;(setq laconica-server "identi.ca"
 ;;      identica-username "crap0101")
+
+;; rust ;;
+(add-to-list 'load-path "/home/crap0101/.emacs.d/rust")
+(require 'rust-mode)
