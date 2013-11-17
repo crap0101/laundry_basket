@@ -125,12 +125,6 @@ buffer's lines, go to the last line."
       erc-auto-discard-away t
       erc-autoaway-idle-seconds 900)
 
-;; identica-mode ;;
-;;(load-file "/home/crap0101/.emacs.d/identica-mode.el")
-;;(require 'identica-mode)
-;;(setq laconica-server "identi.ca"
-;;      identica-username "crap0101")
-
 ;; rust ;;
 (add-to-list 'load-path "/home/crap0101/.emacs.d/rust")
 (require 'rust-mode)
