@@ -11,6 +11,8 @@ Usage: $1 -[aAtTyscb] file [file ...]
     -a    artist
     -A    album
     -d    duration
+    -f    file basename
+    -F    file complete path
     -t    title
     -T    track number
     -y    year
@@ -35,8 +37,8 @@ function track_info () {
     echo -e "SAMPLE_RATE\nCHANNELS\nBPS" | paste -d= - <( metaflac --show-sample-rate --show-channels --show-bps "$1" )
 }
 
-function format_info () {
-    echo "$1"
+function format_info () { # args: file, print_function
+    echo "FILENAME=$($2 "$1")"
     track_info "$1"
     echo "DURATION=$(track_time "$1")"
 }
@@ -48,12 +50,17 @@ then
 fi
 
 filter=
-while getopts "aAdtTyscbh:" arg
+fprint=echo
+while getopts "aAdfFtTyscbh:" arg
 do
     case $arg in
 	a) filter+="ARTIST|";;
 	A) filter+="ALBUM|";;
 	d) filter+="DURATION|";;
+	f) filter+="FILENAME|"
+	    fprint=basename
+	    ;;
+	F) filter+="FILENAME|";;
 	t) filter+="TITLE|";;
 	T) filter+="TRACKNUMBER|";;
 	y) filter+="YEAR|";;
@@ -65,11 +72,13 @@ do
             exit 0
     esac
 done
+shift $(($OPTIND - 1))
+
 if [ -n "$filter" ]; then
     filter="^(${filter%|})"
 fi
 
 for track in "$@"; do
-    format_info "$track" 2>/dev/null | grep -E "$filter"
+    format_info "$track" $fprint 2>/dev/null | grep -E "$filter"
     echo
 done
