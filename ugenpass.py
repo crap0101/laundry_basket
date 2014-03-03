@@ -37,14 +37,19 @@ import argparse
 from collections import defaultdict
 from operator import itemgetter
 import os
+import random
 import string
 import sys
+import time
 
 if sys.version_info.major > 2:
-    def urandom (n):
-        return map(chr, os.urandom(n))
+    def urandom (n, chr_range=256):
+        a, b = pair_from_time()
+        return (chr((x ^ a ^ b) % chr_range) for x in os.urandom(n))
 else:
-    urandom = os.urandom
+    def urandom (n, chr_range=256):
+        a, b = pair_from_time()
+        return (chr((ord(x) ^ a ^ b) % chr_range) for x in os.urandom(n))
     range = xrange
 
 VERSION = '0.6'
@@ -54,6 +59,14 @@ SYMBOLS = set(string.printable).difference(string.whitespace)
 REPORT_ALL = 'all'
 REPORT_ONLY = 'only'
 _NO_REPORT = ''
+
+def pair_from_time ():
+    t = time.time()
+    a = int(t)
+    b = int((t - a) * 1000)
+    if b == 0:
+        b = random.randrange(10000) ^ int(time.time())
+    return a, b
 
 def ugenpass (symbols, n, randfunc=urandom):
     lst = []
@@ -156,7 +169,7 @@ if __name__ == '__main__':
                    help='generate password without repeated characters')
     p.add_argument('-t', '--times', dest='times',
                    type=int, default=1, metavar='NUMBER',
-                   help='''repeate the generations %(metavar)s times,
+                   help='''repeate the generation %(metavar)s times,
                    so %%prog 9 8 7 -t 3 generate a total of 9 strings.
                    Default: %(default)s, values <= 0 produces no output.''')
     p.add_argument('-v', '--version', action='version', version=VERSION)
@@ -166,8 +179,8 @@ if __name__ == '__main__':
     report.add_argument('-R', '--report', dest='report', nargs='?',
                    default=_NO_REPORT, choices=(REPORT_ALL, REPORT_ONLY),
                    help="""Also run test and report info about the generation.
-                   Optional parameter {r_all} prints also the string already
-                   produced, {r_only} doesn't (the option alone means {r_only})
+                   Optional parameter '{r_all}' prints also the string already
+                   produced, '{r_only}' doesn't (the option alone means '{r_only}')
                    """.format(r_all=REPORT_ALL, r_only=REPORT_ONLY))
     args = p.parse_args()
     if args.uniq and max(args.lengths) > len(SYMBOLS):
