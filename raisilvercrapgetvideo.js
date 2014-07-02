@@ -35,6 +35,7 @@ var table_add = function (table, name, url) {
     var videolink = document.createElement('a');
     var text = document.createTextNode(name);
     videolink.setAttribute("href", url);
+    videolink.setAttribute("style", "color:white")
     text.title = name;
     cell.appendChild(videolink);
     videolink.appendChild(text);
