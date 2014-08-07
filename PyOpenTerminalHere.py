@@ -45,7 +45,7 @@ def open_terminal():
             "--text=non riesco ad aprire '%s'" % path_to_open
         ]
         os.execvp(error_msg[0], error_msg)
-    cmd = ["gnome-terminal", '--working-directory=%s' % path_to_open]
+    cmd = ["x-terminal-emulator", '--working-directory=%s' % path_to_open]
     os.execvp(cmd[0], cmd)
 
 if __name__ == '__main__':
