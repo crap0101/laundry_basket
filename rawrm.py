@@ -41,6 +41,9 @@ def get_args (cmdline=None):
                    dest='loglevel', choices=_LL.keys(),
                    default='INFO', metavar='LEVEL',
                    help='set verbosity, choices: %(choices)s. Default: INFO')
+    p.add_argument('-s', '--simulate',
+                   dest='simulate', action='store_true',
+                   help="show what's going to happen")
     p.add_argument('-t', '--test',
                    dest='tests', action='store_true', help='run tests')
     return p.parse_args(cmdline)
@@ -50,20 +53,26 @@ def get_names (path):
         if os.path.isfile(os.path.join(path, fn)):
             yield fn
 
+def _remove (path):
+    try:
+        os.remove(path)
+        logging.info("removing {}".format(path))
+    except Exception as err:
+        if not ignore:
+            raise err
+        else:
+            logging.error("ERR ({}): {}".format(fn, err))
+
+def _simulate (path):
+    logging.info("[S] removing {}".format(path))
+
 def remove (basenames, path, exts, ignore=False):
     names = set(os.path.splitext(n)[0] for n in basenames)
     exts = set(".{}".format(e) for e in exts)
     for fn in os.listdir(path):
         n, e = os.path.splitext(fn)
         if e in exts and n not in names:
-            try:
-                os.remove(os.path.join(path, fn))
-                logging.info("removing {}".format(os.path.join(path, fn)))
-            except Exception as err:
-                if not ignore:
-                    raise err
-                else:
-                    logging.error("ERR ({}): {}".format(fn, err))
+            _remove(os.path.join(path, fn))
 
 def tests():
     import inspect
@@ -147,6 +156,8 @@ if __name__ == '__main__':
         tests()
         sys.exit(0)
     logging.basicConfig(format='%(message)s', level=_LL[args.loglevel])
+    if args.simulate:
+        _remove = _simulate
     if args.orig is None:
         args.orig = os.getcwd()
     if args.add_exts:
