@@ -235,16 +235,16 @@ if __name__ == '__main__':
         tests()
         sys.exit(0)
     if args.orig is None:
-        orig = urllib.parse.unquote_plus(os.getcwd())
+        orig = urllib.parse.unquote(os.getcwd())
     else:
-        orig = urllib.parse.unquote_plus(args.orig)
+        orig = urllib.parse.unquote(args.orig)
     if args.add_exts:
         exts = list(_EXTS) + args.add_exts
     elif args.cust_exts:
         exts = args.cust_exts
     else:
         exts = _EXTS
-    dest = os.path.join(orig, urllib.parse.unquote_plus(args.dest))
+    dest = os.path.join(orig, urllib.parse.unquote(args.dest))
     try:
         os.makedirs(dest)
     except OSError as err:
