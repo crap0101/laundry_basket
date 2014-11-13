@@ -11,6 +11,7 @@ import logging
 import os
 import os.path
 import sys
+import urllib.parse
 
 _EXTS = ('RW2', 'CR2', 'dng')
 _SFNAME = 'RAW'
@@ -159,12 +160,14 @@ if __name__ == '__main__':
     if args.simulate:
         _remove = _simulate
     if args.orig is None:
-        args.orig = os.getcwd()
+        orig = urllib.parse.unquote_plus(os.getcwd())
+    else:
+        orig = urllib.parse.unquote_plus(args.orig)
     if args.add_exts:
         exts = list(_EXTS) + args.add_exts
     elif args.cust_exts:
         exts = args.cust_exts
     else:
         exts = _EXTS
-    dest = os.path.join(args.orig, args.dest)
-    remove(get_names(args.orig), dest, exts, args.ignore)
+    dest = os.path.join(orig, urllib.parse.unquote_plus(args.dest))
+    remove(get_names(orig), dest, exts, args.ignore)

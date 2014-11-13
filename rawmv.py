@@ -11,6 +11,7 @@ import os
 import os.path
 import shutil
 import sys
+import urllib.parse
 
 _EXTS = ('RW2', 'CR2', 'dng')
 _SFNAME = 'RAW'
@@ -234,14 +235,16 @@ if __name__ == '__main__':
         tests()
         sys.exit(0)
     if args.orig is None:
-        args.orig = os.getcwd()
+        orig = urllib.parse.unquote_plus(os.getcwd())
+    else:
+        orig = urllib.parse.unquote_plus(args.orig)
     if args.add_exts:
         exts = list(_EXTS) + args.add_exts
     elif args.cust_exts:
         exts = args.cust_exts
     else:
         exts = _EXTS
-    dest = os.path.join(args.orig, args.dest)
+    dest = os.path.join(orig, urllib.parse.unquote_plus(args.dest))
     try:
         os.makedirs(dest)
     except OSError as err:
@@ -249,4 +252,4 @@ if __name__ == '__main__':
             raise err
         elif err.errno != errno.EEXIST:
             raise err
-    move(get_paths(args.orig, exts), dest, args.replace)
+    move(get_paths(orig, exts), dest, args.replace)
