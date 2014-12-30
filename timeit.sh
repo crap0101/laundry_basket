@@ -1,9 +1,26 @@
 #!/bin/bash
+shopt -s extglob
+
+function usage () {
+    echo "USAGE: %prog [REPETITIONS] COMMAND
+    -h, --help    display this help
+"
+}
 
 rep=1000
-if [[ $1 =~ ^[0-9]+$ ]]; then
-    rep=$1
-    shift
+
+case "$1" in
+    -h|--help|"")
+	usage
+	exit 1;;
+    +([0-9]))
+        rep=$1
+	shift;;
+esac
+
+if [[ $# -eq 0 ]]; then
+    usage
+    exit 1
 fi
 
 start=$(date +%s)
