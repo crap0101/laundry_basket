@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 # Name: ugenpass
-# Version: 0.5
+# Version: 0.7
 # Author: Marco Chieppa ( a.k.a. crap0101 )
-# Last Update: 12 May 2011
+# Last Update: 2015-02-20
 # Description: password generator
-# Requirement: Python >= 2.7 (or any version with the argparse module)
+# Requirement: Python >= 2.7
 
 # Copyright (C) 2012  Marco Chieppa (aka crap0101)
 
@@ -52,13 +52,15 @@ else:
         return (chr((ord(x) ^ a ^ b) % chr_range) for x in os.urandom(n))
     range = xrange
 
-VERSION = '0.6'
-DESCRIPTION = "Generate a password for any input (and integer) argument."
+VERSION = '0.7'
+DESCRIPTION = "Generate passwords."
 
-SYMBOLS = set(string.printable).difference(string.whitespace)
+SYMBOLS = tuple(set(string.printable).difference(string.whitespace))
+SEP = ''
+MAXSIZE = sys.maxsize
 REPORT_ALL = 'all'
 REPORT_ONLY = 'only'
-_NO_REPORT = ''
+NO_REPORT = ''
 
 def pair_from_time ():
     t = time.time()
@@ -70,27 +72,42 @@ def pair_from_time ():
 
 def ugenpass (symbols, n, randfunc=urandom):
     lst = []
+    symidx = tuple(range(len(symbols)))
+    slen = len(symidx)
     _n = n**2
     while len(lst) < _n:
-        got = list(symbols.intersection(randfunc(n)))
-        if got:
-            lst.append(got[sum(map(ord, randfunc(n))) % len(got)])
+        lst.append(symidx[sum(map(ord, randfunc(n))) % slen])
     while len(lst) != n:
         lst.pop(sum(map(ord, randfunc(n))) % n)
-    return ''.join(lst)
+    return tuple(symbols[idx] for idx in lst)
 
-def gen (symbols, lengths, times, func=urandom, unique=False):
+def gen (symbols, lengths, times, func=urandom, unique=False, sep=''):
     if unique:
         def genfunc(sym, n, func):
-            s = ugenpass(sym, n, func)
-            while len(set(s)) < n:
-                s = ''.join(set(s).union(ugenpass(sym, n, func)))
-            return s[:n]
+            s = set()
+            while len(s) < n:
+                s |= set(ugenpass(sym, n, func))
+            return tuple(s)[:n]
     else:
         genfunc = ugenpass
     for _ in range(times):
         for n in lengths:
-            yield genfunc(symbols, n, func)
+            yield sep.join(genfunc(symbols, n, func))
+
+def get_words (filepath, wrlen, maxwords):
+    with (open(filepath) if filepath != '-' else sys.stdin) as wordsfile:
+        s, e = wrlen
+        tot = 0
+        wlist = []
+        for line in wordsfile:
+            nw = list(w for w in line.split() if s <= len(w) <= e)
+            if tot + len(nw) >= maxwords:
+                wlist.extend(nw[:maxwords-tot])
+                break
+            wlist.extend(nw)  
+            tot += len(nw)          
+        return wlist
+
 
 # Report functions & utility stuff
 
@@ -160,7 +177,43 @@ def print_report (generated, symbols, out=sys.stdout):
         print("* NO repeated patterns found ({} of {})".format(
             len(found), tot_subp), file=out)
 
+# parsing utilities
+class RangeAction (argparse.Action):
+    def __init__ (self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super(RangeAction, self).__init__(option_strings, dest, **kwargs)
+    def __call__ (self, parser, namespace, value, option_string=None):
+        v = value.split(':')
+        lv = len(v)
+        if lv == 1:
+            val = int(v)
+        elif lv == 2:
+            start, end = tuple(map(int, v))
+            if end < start:
+                parser.error("%s: START > END" % option_string)
+            elif start < 1:
+                raise parser.error("%s: START must be > 0" % option_string) 
+            elif end > MAXSIZE:
+                raise parser.error("%s: END must be <= %d" % (MAXSIZE, option_string))
+            val = start, end
+        else:
+            raise
+        setattr(namespace, self.dest, val)
+
+class MaxWordsAction (argparse.Action):
+    def __init__ (self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super(MaxWordsAction, self).__init__(option_strings, dest, **kwargs)
+    def __call__ (self, parser, namespace, value, option_string=None):
+        val = int(value)
+        if val > MAXSIZE:
+            raise parser.error("%s: must be <= %d" % (option_string, MAXSIZE))
+        setattr(namespace, self.dest, value)
+
 if __name__ == '__main__':
+    _words_from_file = '-w', '--words-from-file'
     p = argparse.ArgumentParser(description=DESCRIPTION)
     p.add_argument('lengths', nargs='*', default=[13],
                     type=int, metavar='LENGTH',
@@ -172,32 +225,60 @@ if __name__ == '__main__':
                    help='''repeate the generation %(metavar)s times,
                    so %%prog 9 8 7 -t 3 generate a total of 9 strings.
                    Default: %(default)s, values <= 0 produces no output.''')
+    p.add_argument(*_words_from_file, #'-w', '--words-from-file',
+                   dest='words', metavar='FILE',
+                   help='''generate password using words from %(metavar)s.
+                           If %(metavar)s is "-" read words from stdin.''')
     p.add_argument('-v', '--version', action='version', version=VERSION)
+    wp = p.add_argument_group('password from words specific options')
+    wp.add_argument('-s', '--word-sep',
+                   dest='word_sep', default=' ', metavar='STRING',
+                   help='''Use %(metavar)s as separator when generating
+                        password using the {} option (default: "%(default)s").
+                        '''.format('/'.join(_words_from_file)))
+    wp.add_argument('-l', '--word-length',
+                   dest='word_rlen', default=(1,MAXSIZE),
+                   action=RangeAction, metavar='START[:END]',
+                   help='''Use words with length in the %(metavar)s range
+                        (from 1 up to {} (default).'''.format(MAXSIZE))
+    wp.add_argument('-m', '--max-words',
+                   dest='max_words', type=int,  default=MAXSIZE,
+                   action=MaxWordsAction, metavar='NUMBER',
+                   help='''Read at most %(metavar)s words from the input file.
+                        Default: %(default)s'''.format(MAXSIZE))
     report = p.add_argument_group('I/O and report options')
     report.add_argument('-o', '--output', dest='out', default='', metavar='FILE',
                    help='output on %(metavar)s (default: stdout)')
     report.add_argument('-R', '--report', dest='report', nargs='?',
-                   default=_NO_REPORT, choices=(REPORT_ALL, REPORT_ONLY),
+                   default=NO_REPORT, choices=(REPORT_ALL, REPORT_ONLY),
                    help="""Also run test and report info about the generation.
                    Optional parameter '{r_all}' prints also the string already
                    produced, '{r_only}' doesn't (the option alone means '{r_only}')
                    """.format(r_all=REPORT_ALL, r_only=REPORT_ONLY))
     args = p.parse_args()
+    if args.words:
+        try:
+            SYMBOLS = tuple(set(get_words(args.words, args.word_rlen, args.max_words)))
+            if not SYMBOLS:
+                p.error("Not enough symbols")
+        except Exception as e:
+            p.error(e)
+        SEP = args.word_sep
     if args.uniq and max(args.lengths) > len(SYMBOLS):
         p.error("some required length exceed the number of available symbols")
     if not args.out or args.out == '-':
         out = sys.stdout
     else:
         out = open(args.out, 'w')
-    if args.report != _NO_REPORT:
+    if args.report != NO_REPORT:
         generated = list(
-            gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq))
+            gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq, SEP))
         print_report(generated, SYMBOLS, out=out)
         if args.report == REPORT_ALL:
             for g in generated:
                 print(g, file=out)
     else:
-        for x in gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq):
+        for x in gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq, SEP):
             print(x, file=out)
     if out != sys.stdout:
         out.close()
