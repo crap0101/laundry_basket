@@ -1,6 +1,6 @@
 /*
   author: Marco Chieppa (aka crap0101)
-  year: 2012-2013
+  year: 2012-2015
   copyright: public domain.
 
   script per greaseamonkey  per eliminare le "offerte" di lavoro
@@ -28,22 +28,23 @@ var ShitReg = /Il nostro Cliente[:]?|importante azienda cliente|per nostro clien
 var bakekapurge = function () {
     var divs = document.getElementsByTagName("div");
     for (var i=divs.length-1; i >= 0; i--) {
-	var div = divs[i];
-	if (div.className.indexOf("annuncio-item") == 0) {
-	    var elems = div.getElementsByTagName("p");
+        var div = divs[i];
+        if (div.className.indexOf("bk-annuncio-content") == 0) {
+            var elems = div.getElementsByTagName("p");
             //console.log(elems.className);
-	    for (var j=0; j<elems.length; j++) {
-		var el = elems[j];
-		if (el.className == "text" && ShitReg.exec(el.innerHTML)) {
-		    //console.log(el.innerHTML);
-		    //el.innerHTML = "[PURGED]";
-		    div.parentNode.removeChild(div);
-		    break;
-		}
-	    }
-	}
+            for (var j=0; j<elems.length; j++) {
+                var el = elems[j];
+                if (el.className == "bk-annuncio-description" && ShitReg.exec(el.innerHTML)) {
+                    //console.log(el.innerHTML);
+                    //el.innerHTML = "[PURGED]";
+                    div.parentNode.removeChild(div);
+                    break;
+                }
+            }
+        }
     }
 };
 
 bakekapurge();
+
 
