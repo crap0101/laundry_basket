@@ -10,7 +10,10 @@
   (server-start)
   (message (format "server started (%s)" (server-running-p))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;
 ;; custom functions ;;
+;;;;;;;;;;;;;;;;;;;;;;
 
 ; custom goto-line
 (defun go-line (num)
@@ -57,7 +60,9 @@ buffer's lines, go to the last line."
   (run-python-program python-name))
 
 
-;; setting some bindings ;;
+;;;;;;;;;;;;;;
+;; bindings ;;
+;;;;;;;;;;;;;;
 (global-set-key "\C-c\C-r" (lambda () (interactive)
 			     (progn (revert-buffer nil t) (message "%s" "buffer reverted"))))
 ; for previously defined functions
@@ -70,10 +75,14 @@ buffer's lines, go to the last line."
 (global-set-key (kbd "<C-mouse-5>") (lambda () (interactive) (text-scale-increase 1)))
 
 
+;;;;;;;;;;;;;;;;;;;;;;
 ;; custom variables ;;
+;;;;;;;;;;;;;;;;;;;;;;
 
 ; http://lists.gnu.org/archive/html/emacs-devel/2011-09/msg00350.html
 (setq redisplay-dont-pause t)
+;; https://lists.gnu.org/archive/html/bug-gnu-emacs/2010-11/msg00243.html
+(setq focus-follows-mouse nil)
 ; keep the cursor at the same screen position whenever a scroll command moves it off-window
 (setq scroll-preserve-screen-position t)
 ; browser
@@ -91,9 +100,10 @@ buffer's lines, go to the last line."
 (column-number-mode t)
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; set color, faces and similar stuffs ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; actually back to default color cause shitty monitor
 ; (set-background-color "#000000") ;"#333333")
 ; (set-foreground-color "#33CC00")
 (set-face-attribute 'default t
