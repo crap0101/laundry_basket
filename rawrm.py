@@ -10,6 +10,7 @@ import glob
 import logging
 import os
 import os.path
+import re
 import sys
 import urllib.parse
 
@@ -47,6 +48,22 @@ def get_args (cmdline=None):
                    help="show what's going to happen")
     p.add_argument('-t', '--test',
                    dest='tests', action='store_true', help='run tests')
+    p.add_argument('-x', '--inexact-match',
+                   dest='find_inexact', nargs='?', default=None,
+                   const='[_-].*', metavar='PATTERN',
+                   help='''Search for inexact matching, i.e. for a file named
+                   123.raw without a corresponding file 123.jpg the former will
+                   be not removed if a file (for example) named 123-01.jpg or
+                   123_edit1.jpg exists. Anyway the raw file will be deleted if
+                   the jpg doesn't exist.
+                   The way filenames are matched depends upon the value of
+                   %(metavar)s, which will be interpreted as a regex pattern
+                   following the filename: for example, using -x '[_+]\d{2}$'
+                   will match file whose name is followed by an underscore or
+                   a plus sign, followed by two digits as in: 123-02.jpg
+                   (extensions are stripped off from the filename and don't
+                   count for the matching). Default value for %(metavar)s
+                   is "%(const)s".''')
     return p.parse_args(cmdline)
 
 def get_names (path):
@@ -54,7 +71,7 @@ def get_names (path):
         if os.path.isfile(os.path.join(path, fn)):
             yield fn
 
-def _remove (path):
+def _remove (path, ignore=False):
     try:
         os.remove(path)
         logging.info("removing {}".format(path))
@@ -64,7 +81,14 @@ def _remove (path):
         else:
             logging.error("ERR ({}): {}".format(fn, err))
 
-def _simulate (path):
+def _find_exact (fname, others):
+    return fname not in others
+def _find_alike (fname, others, pattern):
+    return not any(
+        (fname == f or re.match("%s%s" % (fname, pattern), f) for f in others))
+_find_orphan = _find_exact
+
+def _simulate (path, ignore=False):
     logging.info("[S] removing {}".format(path))
 
 def remove (basenames, path, exts, ignore=False):
@@ -72,8 +96,8 @@ def remove (basenames, path, exts, ignore=False):
     exts = set(".{}".format(e) for e in exts)
     for fn in os.listdir(path):
         n, e = os.path.splitext(fn)
-        if e in exts and n not in names:
-            _remove(os.path.join(path, fn))
+        if e in exts and _find_orphan(n, names):
+            _remove(os.path.join(path, fn), ignore)
 
 def tests():
     import inspect
@@ -159,6 +183,8 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(message)s', level=_LL[args.loglevel])
     if args.simulate:
         _remove = _simulate
+    if args.find_inexact is not None:
+        _find_orphan = lambda f, lst: _find_alike(f, lst, args.find_inexact)
     if args.orig is None:
         orig = urllib.parse.unquote(os.getcwd())
     else:
