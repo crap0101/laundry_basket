@@ -38,6 +38,12 @@ buffer's lines, go to the last line."
   (kill-ring-save (line-beginning-position)
 		  (line-beginning-position (+ 1 (if arg arg 1)))))
 
+; insert date
+(defun insert-date (prefix)
+    "Insert the current date."
+    (interactive "P")
+    (insert (format-time-string "%Y-%H-%d")))
+
 ; run python program
 (defun run-python-program (&optional python-name)
   "Run the python programs in the current buffer"
@@ -68,6 +74,7 @@ buffer's lines, go to the last line."
 ; for previously defined functions
 (global-set-key "\C-cg" 'go-line)
 (global-set-key "\C-c\C-c" 'copy-lines)
+(global-set-key (kbd "C-c d") 'insert-date)
 (global-set-key [f2] 'run-python-program)
 (global-set-key [f3] 'run-pythonXY-program)
 ; change font size with C-[MouseWheelUpOrDown]
