@@ -42,7 +42,7 @@ buffer's lines, go to the last line."
 (defun insert-date (prefix)
     "Insert the current date."
     (interactive "P")
-    (insert (format-time-string "%Y-%H-%d")))
+    (insert (format-time-string "%Y-%m-%d")))
 
 ; run python program
 (defun run-python-program (&optional python-name)
