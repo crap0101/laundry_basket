@@ -54,7 +54,13 @@ def open_terminal ():
     if not path_to_open or not os.path.isdir(path_to_open):
         if sys.argv[1:]:
             path_to_open = re.split(pattern, sys.argv[1], maxsplit=1)[-1]
-    if not path_to_open or not os.path.isdir(path_to_open):
+    if os.path.isfile(path_to_open):
+        path_to_open = os.path.dirname(path_to_open)
+    elif os.path.isdir(path_to_open):
+        path_to_open = path_to_open
+    elif not path_to_open:
+        path_to_open = os.getcwd()
+    else:
         die_bad(path_to_open)
     cmd = ["x-terminal-emulator", '--working-directory=%s' % path_to_open]
     os.execvp(cmd[0], cmd)
