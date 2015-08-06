@@ -56,11 +56,10 @@ def open_terminal ():
             path_to_open = re.split(pattern, sys.argv[1], maxsplit=1)[-1]
     if not path_to_open or not os.path.isdir(path_to_open):
         die_bad(path_to_open)
-    cmd = ["gnome-terminal", '--working-directory=%s' % path_to_open]
+    cmd = ["x-terminal-emulator", '--working-directory=%s' % path_to_open]
     os.execvp(cmd[0], cmd)
 
 if __name__ == '__main__':
-    print sys.argv
     open_terminal()
     try:
         open_terminal()
