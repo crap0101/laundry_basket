@@ -12,7 +12,8 @@ OPTIONS:
   -p PATH    plot info from the file at PATH [*1]
   -s PATH    show info from the file at PATH [*2]
 [*1] Require gnuplot
-[*1][*2] PATH must be a file produced by a previous running with the -c option
+[*1] PATH must be a file produced by a previous running with the -s option
+[*2] PATH must be a file produced by a previous running with the -c option
 All outputs goes to stdout, the -p option produce a jpg file.
 Without options/arguments run the collecting job from the current directory.
 Returns 0 on success or >0 on failure (maybe) ***XXX+TODO***.
@@ -82,7 +83,7 @@ awk -F: '
     { arr["401-10000"] += $2 }
     END {
         for (f in arr) {
-            a = frange(f)
+            frange(f)
             printf("%s:%d:%d:%d\n", f, arr[f], farr[1], farr[2])
         }
     }
