@@ -54,7 +54,6 @@ class AnimatedGif (object):
             except TclError:
                 idx -= 1
                 break
-        self._frames = idx
         return idx
 
     def _update (self):
