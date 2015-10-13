@@ -41,7 +41,9 @@ class AnimatedGif (object):
         self._after_id = self._container.after(self._delay, self.play)
 
     def stop (self):
-        self._container.after_cancel(self._after_id)
+        if self._after_id is not None:
+            self._container.after_cancel(self._after_id)
+            self._after_id = None
 
     def _total_frames (self):
         idx = 0
