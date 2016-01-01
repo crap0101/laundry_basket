@@ -6,8 +6,8 @@ import glob
 import json
 import os
 
-BROWSERS = ('firefox', 'abrowser')
-DEFAULT_BROWSER = 'abrowser'
+BROWSERS = ('firefox', 'iceweasel', 'abrowser')
+DEFAULT_BROWSER = 'firefox'
 #TODO: check those paths
 SUBPATHS = {'old': '*.default/sessionstore.js',
                  'new': '*.default/sessionstore-backups/recovery.js'}
@@ -16,14 +16,12 @@ PATH_FMT = '~/.mozilla/{browser}/{subpath}'
 def get_args (args=None):
     p = argparse.ArgumentParser()
     p.add_argument('-b', '--browser',
-                   dest='browser', default='abrowser', help='browser name')
+                   dest='browser', default=DEFAULT_BROWSER,
+                   choices=BROWSERS, help='browser name')
     p.add_argument('-s', '--subpath',
                    dest='subpath', choices=(SUBPATHS.keys()),
-                   default='new', help='ehm...')
+                   default='new', help="browser's session path location")
     return p.parse_args(args)
-
-#OLD: SESSION_FILE = '~/.mozilla/firefox/*.default/sessionstore.js'
-#SESSION_FILE = '~/.mozilla/abrowser/*.default/sessionstore-backups/recovery.js'
 
 def current_tabs_url (path):
     with open(path) as f:
