@@ -1,0 +1,43 @@
+#!/usr/bin/gawk -E
+
+function help () {
+    print "Print file lines longer than N chars."
+    print "USAGE: %prog [-vV] [len=N] file1 [file2 ...]"
+    print "`N` default to 79."
+    print "Default output format: line_number (line length)"
+    print "  modifier:"
+    print "  -v    print file name (even if not match will be found)"
+    print "  -V    prepend the file name for every match."
+    print "NOTE: options cannot be grouped, write -v -V not -vV"
+}
+
+BEGIN {
+    verbose = 0
+    max = 79
+    filename = ""
+    for (i=i; i<ARGC; i++)
+        if (0 != match(ARGV[i], /len=([0-9]+)/, arr)) {
+            max = arr[1]
+            ARGV[i] = ""
+        } else if (0 != match(ARGV[i], /-v/)) {
+            verbose = or(verbose, 1)
+            ARGV[i] = ""
+        } else if (0 != match(ARGV[i], /-V/)) {
+            verbose = or(verbose, 2)
+            ARGV[i] = ""
+        } else if (0 != match(ARGV[i], /(-h|--help)/)) {
+            help()
+            exit 0
+        }
+}
+ 
+FNR == 1 {
+    if (and(verbose, 1))
+        print FILENAME
+    if (and(rshift(verbose, 1), 1))
+        filename = FILENAME " "
+}
+
+length($0) > max {
+    printf("%s%d (%d)\n", filename, FNR, length($0))
+}
