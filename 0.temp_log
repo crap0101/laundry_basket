@@ -1,0 +1,15 @@
+# script (messo in /usr/local/sbin/hw_temp.sh):
+(/bin/date +'%Y-%m-%-d %H:%M:%S' ;
+ /usr/sbin/hddtemp /dev/[hs]d[a-z]* ;
+ /usr/bin/sensors | /usr/bin/awk 'length($0) > 1' ;
+ echo "##########"
+) 2>&1 | /usr/bin/tee -a /var/log/hw_temp.log
+
+# logrotate (messo in /etc/logrotate.d/hw_temp):
+/var/log/hw_temp.log {
+ rotate 5
+ size 1M
+}
+
+# crontab (inserito con `sudo crontab -e`)
+*/5 * * * * /usr/local/sbin/hw_temp.sh
