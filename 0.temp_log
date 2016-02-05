@@ -1,5 +1,5 @@
 # script (messo in /usr/local/sbin/hw_temp.sh):
-(/bin/date +'%Y-%m-%-d %H:%M:%S' ;
+(/bin/date +'%Y-%m-%d %H:%M:%S' ;
  /usr/sbin/hddtemp /dev/[hs]d[a-z]* ;
  /usr/bin/sensors | /usr/bin/awk 'length($0) > 1' ;
  echo "##########"
