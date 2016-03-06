@@ -3,7 +3,7 @@
   year: 2016
   copyright: public domain.
 
-  script per greaseamonkey per eliminare dai risultati egosearch
+  script per greasemonkey per eliminare dai risultati egosearch
   di phpBB quelli marcari come risolti (per il forum ubuntu-it.org).
 */
 
