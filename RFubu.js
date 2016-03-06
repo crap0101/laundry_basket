@@ -16,7 +16,7 @@
 // @grant    GM_setValue
 // @grant    GM_deleteValue 
 // @grant    GM_log
-// @namespace    https://gitorious.org/~crap0101
+// @namespace    https://github.com/crap0101
 // @include      http://forum.ubuntu-it.org/search.php?search_id=egosearch
 // @run-at       document-end
 // ==/UserScript==
