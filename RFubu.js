@@ -5,6 +5,12 @@
 
   script per greasemonkey per eliminare dai risultati egosearch
   di phpBB quelli marcari come risolti (per il forum ubuntu-it.org).
+
+  Nota: per attivare il filtro anche nelle pagine successive aggiungere
+  la seguente regola di include:
+// @include  http://forum.ubuntu-it.org/search.php*author_id=$ID*
+  oppure aggiungere il solo uri a "Included Pages" in "User Setting",
+  sostituendo $ID con l'id del proprio utente
 */
 
 // ==UserScript==
@@ -17,7 +23,7 @@
 // @grant    GM_deleteValue 
 // @grant    GM_log
 // @namespace    https://github.com/crap0101
-// @include      http://forum.ubuntu-it.org/search.php?search_id=egosearch
+// @include      http://forum.ubuntu-it.org/search.php?search_id=egosearch*
 // @run-at       document-end
 // ==/UserScript==
 
