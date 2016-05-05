@@ -127,7 +127,7 @@ if __name__ == '__main__':
                     from_file.append(tr)
             args.trackers.extend(from_file)
     if not args.trackers:
-        p.error("No trackers to add!")
+        p.error("No trackers specified!")
     trackers = [t.encode(ENC) for t in args.trackers]
     if args.remove:
         for file in args.files:
