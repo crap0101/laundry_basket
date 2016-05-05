@@ -35,7 +35,6 @@ def die_bad (strerr, prologue="Unable to open "):
 
 def open_terminal ():
     pattern = '^file://'
-    path_to_open = False
     path_to_open = urllib.unquote(
         os.getenv("NAUTILUS_SCRIPT_SELECTED_FILE_PATHS", ''
             ).split("\n")[0].strip()
@@ -66,7 +65,6 @@ def open_terminal ():
     os.execvp(cmd[0], cmd)
 
 if __name__ == '__main__':
-    open_terminal()
     try:
         open_terminal()
     except Exception as e:
