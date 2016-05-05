@@ -4,7 +4,7 @@
   copyright: public domain.
 
   script per greasemonkey per eliminare dai risultati egosearch
-  di phpBB quelli marcari come risolti (per il forum ubuntu-it.org).
+  di phpBB quelli marcati come risolti (per il forum ubuntu-it.org).
 
   Nota: per attivare il filtro anche nelle pagine successive aggiungere
   la seguente regola di include:

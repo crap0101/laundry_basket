@@ -94,7 +94,7 @@ buffer's lines, go to the last line."
 (setq scroll-preserve-screen-position t)
 ; browser
 (setq browse-url-browser-function 'browse-url-firefox
-      browse-url-firefox-program "abrowser")
+      browse-url-firefox-program "firefox")
 ; no beep
 (setq visible-bell t)
 ; text related
