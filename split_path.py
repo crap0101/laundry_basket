@@ -16,9 +16,10 @@ def split_path (path):
 
 def test (lst):
     from os.path import join as _join
+    from re import sub as _s
     for arg in lst:
         joined = _join(*split_path(arg))
-        assert arg == joined, (arg, joined)
+        assert _s('/$', '', arg) == _s('/$', '', joined), (arg, joined)
     print('ok')
 
 
@@ -26,7 +27,7 @@ if __name__ == '__main__':
     import sys
     if '-t' in sys.argv:
         sys.argv.remove('-t')
-        test()
+        test(sys.argv[1:])
     else:
         for arg in sys.argv[1:]:
             print(list(split_path(arg)))
