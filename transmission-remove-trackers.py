@@ -49,7 +49,7 @@ def show (torrents, regex):
             if reg.match(t['scrape']):
                 trackers_to_remove.add(t['scrape'])
         if trackers_to_remove:
-            print "removing <{}> (match(es): {})".format(
+            print "remove from <{}> matches: <{}>".format(
                 torrent.name, list(trackers_to_remove))
 
 def remove (torrents, regex):
