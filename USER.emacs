@@ -65,6 +65,16 @@ buffer's lines, go to the last line."
   (interactive "sPython name: ")
   (run-python-program python-name))
 
+; number to subscript (O2 -> O₂)
+(defun number-to-subscript ()
+  (let* ((cursor-info (what-cursor-position))
+	 (ival (progn (string-match "(\\([0-9]+\\)" cursor-info)
+		      (string-to-number (match-string 1 cursor-info)))))
+    (if (and (>= ival 48) (<= ival 57))
+	(progn
+	  (delete-char 1)
+	  (insert (format "%c" (+ 8272 ival)))))))
+
 
 ;;;;;;;;;;;;;;
 ;; bindings ;;
@@ -77,6 +87,7 @@ buffer's lines, go to the last line."
 (global-set-key (kbd "C-c d") 'insert-date)
 (global-set-key [f2] 'run-python-program)
 (global-set-key [f3] 'run-pythonXY-program)
+(global-set-key (kbd "M-s") (lambda () (interactive) (number-to-subscript)))
 ; change font size with C-[MouseWheelUpOrDown]
 (global-set-key (kbd "<C-mouse-4>") (lambda () (interactive) (text-scale-decrease 1)))
 (global-set-key (kbd "<C-mouse-5>") (lambda () (interactive) (text-scale-increase 1)))
