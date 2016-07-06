@@ -149,7 +149,7 @@ buffer's lines, go to the last line."
       erc-away-nickname nil
       erc-prompt-for-channel-key nil
       erc-public-away-p nil
-      erc-user-full-name "Marco Chieppa | http://crap0101.gnu-darwin.org/"
+      erc-user-full-name "Marco Chieppa | http://crap0101.altervista.org/"
       erc-auto-discard-away t
       erc-autoaway-idle-seconds 900)
 
