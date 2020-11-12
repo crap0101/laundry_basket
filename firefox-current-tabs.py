@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import argparse
@@ -8,7 +8,7 @@ import os
 
 BROWSERS = ('firefox', 'iceweasel', 'abrowser')
 DEFAULT_BROWSER = 'firefox'
-#TODO: check those paths
+#TODO: recovery.jsonlz4 and lz4 handling :-(
 SUBPATHS = {'old': '*.default/sessionstore.js',
                  'new': '*.default/sessionstore-backups/recovery.js'}
 PATH_FMT = '~/.mozilla/{browser}/{subpath}'

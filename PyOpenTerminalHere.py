@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 # PyOpenTerminalHere - open a terminal in the selected directory 
-# Version: 0.3
+# Version: 0.4
 # Usage: make it executable and paste in ~/.gnome2/nautilus-scripts
-# Tested on GNOME nautilus 2.22.5.1, 3.4.2
+# Tested on MATE caja 1.24.0, lxterminal 0.3.2
 # Non-essential requirement: Zenity
 
 # Copyright (C) 2009-2015  Marco Chieppa ( a.k.a. crap0101 )
@@ -61,7 +61,8 @@ def open_terminal ():
         path_to_open = os.getcwd()
     else:
         die_bad(path_to_open)
-    cmd = ["x-terminal-emulator", '--working-directory=%s' % path_to_open]
+    cmd = ["lxterminal", '--working-directory=%s' % path_to_open]
+    #XXX may fail silenty
     os.execvp(cmd[0], cmd)
 
 if __name__ == '__main__':
