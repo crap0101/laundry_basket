@@ -16,7 +16,7 @@ import sys
 class Injecretor:
     """Like an iterator, better than an iterator :-D
     0. can insert multiple value to be yielded while looping on it
-    1. can retreave the last yielded value (userful in some circustances)
+    1. can retrieve the last yielded value (helpful in some circustances)
     """
     def __init__ (self, seq, name='noname', last=None):
         self._seq = iter(seq)
