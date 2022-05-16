@@ -330,29 +330,6 @@ function merge_sort:          1.1304s
 function merge_sort2:         0.00946821s
 function (builtin) sorted:    0.000196011s
 
-crap0101@orange:~/test$ python3 merge-sorted+Injecretor.py -tqd
-len:10724 min:-9684 max:1039  | len:8133  min:-3925 max:4207 
-len:7860  min:-7374 max:485   | len:3549  min:632   max:4180 
-len:3387  min:-2871 max:515   | len:8360  min:-9700 max:-1341
-len:3720  min:-5452 max:-1733 | len:4429  min:2822  max:7250 
-len:3290  min:-2342 max:947   | len:2069  min:1218  max:3286 
-len:14210 min:-6249 max:7960  | len:13588 min:-9622 max:3965 
-len:4164  min:3553  max:7716  | len:0     min:nan   max:nan  
-assert (sorted input): OK
-*** Test merging...
-assert (merge) [short]: OK
-assert (merge) [long]: OK
-assert (merge-sort): OK
-*** Time tests config: min: -10000 | max: 10000 | len: 1001 | repeat: 100
-*** Merging times...
-function merge_sorted:        2.14837s
-function merge_sorted_g:      0.00015258s
-*** Sorting times...
-function merge_sort:          1.05801s
-function merge_sort2:         0.00930958s
-function (builtin) sorted:    0.000207904s
-
-
 crap0101@orange:~/test$ python3  merge-sorted+Injecretor__test-time.py 
 ------
 [MS]  input: [] [] -> []
