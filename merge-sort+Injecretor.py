@@ -65,6 +65,7 @@ def sort_two (seq: Sequence) -> Iterable:
         else:
             a, b = lst
             yield (b,a) if a > b else (a, b)
+
 def until_sort (seq: Sequence) -> Iterable:
     """yields items from `seq` grouped until sorted."""
     it = Injecretor(seq)
@@ -93,7 +94,8 @@ def until_sort (seq: Sequence) -> Iterable:
 #####################
 
 def merge_sorted (s1: Sequence, s2: Sequence) -> Sequence:
-    """Merge two ordered sequences returning a third."""
+    """Merge two ordered sequences returning a third
+    (paro paro from wikipedia ^L^."""
     lst1 = list(s1)
     lst2 = list(s2)
     len1 = len(lst1)
@@ -116,7 +118,7 @@ def merge_sorted (s1: Sequence, s2: Sequence) -> Sequence:
     return merged
 
 def merge_sorted_g (s1: Sequence, s2: Sequence) -> Iterable:
-    """Merge two ordered sequences returning a third."""
+    """Merge two ordered sequences returning a third. Better."""
     g1 = Injecretor(s1,name='s1')
     g2 = Injecretor(s2,name='s2')
     for i, j in itertools.zip_longest(g1, g2, fillvalue=None):
@@ -192,7 +194,7 @@ def _test_msort ():
         assert s1 == s4, 'ERR (merge_sort <> merge_sort2): {} != {}'.format(s1, s4)
     print('assert (merge-sort): OK')
 
-def _test (*in_args, debug=False):
+def _test (*in_args, debug=False, stats=False):
     from collections import namedtuple as np
     from enum import Enum
     from math import nan
@@ -218,6 +220,16 @@ def _test (*in_args, debug=False):
             for l in pair:
                 assert list(l) == list(sorted(l))
         print('assert (sorted input): OK')
+    if stats:
+        print('***Some stats:')
+        print('{} list pairs'.format(len(lsts)))
+        for f, fname in [(min, 'min value'), (max, 'max value')]:
+            r = functools.reduce(f, itertools.chain(*itertools.chain.from_iterable(lsts)))
+            print('lists {}: {:-5}'.format(fname, r))
+        llen = tuple(map(len,itertools.chain.from_iterable(lsts)))
+        print('Longer list:  {:-10} items'.format(max(llen)))
+        print('Shorter list: {:-10} items'.format(min(llen)))
+        print('average length: {:.2f}'.format(sum(llen)/len(llen)))
     # test merging
     print('*** Test merging...')
     for a in in_args:
@@ -256,7 +268,7 @@ def get_parsed():
     p.add_argument('-T', '--test-functions', dest='test_funcs', action='store_true', help='test functions')
     p.add_argument('-q', '--quit', dest='quit', action='store_true', help='quit after tests')
     p.add_argument('-d', '--debug', dest='debug', action='store_true', help='print debug info (tests only)')
-    # -stat
+    p.add_argument('-s', '--stats', dest='stats', action='store_true', help='print some stat (tests only)')
     return p.parse_args()
 
 
@@ -270,7 +282,7 @@ if __name__ == '__main__':
     ]
     p = get_parsed()
     if p.test_time:
-        _test(inputs, debug=p.debug)
+        _test(inputs, debug=p.debug, stats=p.stats)
         if p.quit:
             sys.exit(0)
     # brief example
@@ -282,7 +294,43 @@ if __name__ == '__main__':
 
 
 """
-crap0101@orange:~/test$ python3 merge-sorted+Injecretor__test-time.py -tqd
+crap0101@orange:~/test$ python3 merge-sort+Injecretor.py -tqds
+[... long long output omitted ...]
+len:14145 min:-7655 max:6489  | len:2594  min:2179  max:4772 
+len:7657  min:-6881 max:775   | len:3038  min:-2241 max:796  
+len:59    min:4820  max:4878  | len:10363 min:-5098 max:5264 
+len:4849  min:-6714 max:-1866 | len:8819  min:-170  max:8648 
+len:6981  min:1020  max:8000  | len:13615 min:-7817 max:5797 
+len:6342  min:-5798 max:543   | len:269   min:-8400 max:-8132
+len:10064 min:-760  max:9303  | len:10878 min:-5139 max:5738 
+len:1363  min:8170  max:9532  | len:2252  min:295   max:2546 
+len:4614  min:-1568 max:3045  | len:15678 min:-8133 max:7544 
+len:10106 min:-9078 max:1027  | len:17151 min:-9824 max:7326 
+len:11610 min:-3794 max:7815  | len:2981  min:-1692 max:1288 
+len:12577 min:-5315 max:7261  | len:2460  min:-2752 max:-293 
+len:16540 min:-9637 max:6902  | len:0     min:nan   max:nan  
+assert (sorted input): OK
+***Some stats:
+501 list pairs
+lists min value: -9996
+lists max value:  9999
+Longer list:       19033 items
+Shorter list:          0 items
+average length: 6647.49
+*** Test merging...
+assert (merge) [short]: OK
+assert (merge) [long]: OK
+assert (merge-sort): OK
+*** Time tests config: min: -10000 | max: 10000 | len: 1001 | repeat: 100
+*** Merging times...
+function merge_sorted:        2.14101s
+function merge_sorted_g:      0.000149758s
+*** Sorting times...
+function merge_sort:          1.1304s
+function merge_sort2:         0.00946821s
+function (builtin) sorted:    0.000196011s
+
+crap0101@orange:~/test$ python3 merge-sorted+Injecretor.py -tqd
 len:10724 min:-9684 max:1039  | len:8133  min:-3925 max:4207 
 len:7860  min:-7374 max:485   | len:3549  min:632   max:4180 
 len:3387  min:-2871 max:515   | len:8360  min:-9700 max:-1341
