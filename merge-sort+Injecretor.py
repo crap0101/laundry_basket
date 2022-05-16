@@ -95,7 +95,7 @@ def until_sort (seq: Sequence) -> Iterable:
 
 def merge_sorted (s1: Sequence, s2: Sequence) -> Sequence:
     """Merge two ordered sequences returning a third
-    (paro paro from wikipedia ^L^."""
+    (paro paro from wikipedia ^L^)."""
     lst1 = list(s1)
     lst2 = list(s2)
     len1 = len(lst1)
