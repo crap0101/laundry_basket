@@ -65,10 +65,9 @@ class Injecretor:
     def send (self, value):
         self._next_vals.append(value)
 
-
-#####################
-# utility functions #
-#####################
+########################
+# strumental functions #
+########################
 
 def timer (f):
     def inner (*a, **k):
@@ -78,6 +77,10 @@ def timer (f):
         print(f'{f.__name__} runs in: {t:.4f} seconds')
         return ret
     return inner
+
+#####################
+# utility functions #
+#####################
 
 def group_sort (seq: Sequence) -> Sequence:
     """Returns items from `seq` grouped while sorted."""
@@ -110,6 +113,7 @@ def group_sort2 (seq: Sequence) -> Sequence:
         a = next(it)
     except StopIteration:
         return slst
+    idx = 1
     for idx, i in enumerate(it, 1):
         if i >= a:
             a = i
@@ -352,7 +356,7 @@ def merge_sort3 (seq: Sequence, func: Callable = merge_sorted_i) -> Sequence:
     while len(d) > 1:
         a = d.pop()
         b = d.pop()
-        d.appendleft(func(a, b))
+        d.append(func(a, b))#d.appendleft(func(a, b))
     assert len(d) == 1
     return d.pop()
 
@@ -629,6 +633,41 @@ function merge_sort2 (*_i):   1.65459s
 function merge_sort3 (*_i):   0.248425s
 function (builtin) sorted:    0.00166128s
 _test runs in: 67.0474 seconds
+"""
+
+"""
+crap0101@orange:~/test$ python3  merge-sort+Injecretor.py -tsqT -m-300 -M500 -l 50 -r 10
+test Injecretor: OK
+*** Test merging...
+assert (merge) [short]: OK
+assert (merge) [short]: OK
+assert (merge-sort): OK
+assert (group_sort*): OK
+function sort_two:            0.00233056s
+function group_sort:          0.00103588s
+function group_sort2:         0.00217003s
+***Some stats (merging):
+list pairs:         50
+lists min value:       -300
+lists max value:        496
+Longer list:           757 items
+Shorter list:           11 items
+average length:     289.18
+Total items:         28918
+*** Time tests config: min: -300 | max: 500 | len: 50 | repeat: 10
+*** Merging times...
+function merge_sorted:        0.0099508s
+function merge_sorted_c:      0.0491738s
+function merge_sorted_g:      0.0435086s
+function merge_sorted_i:      1.53479e-05s
+*** Sorting times...
+function merge_sort:          3.55006s
+function merge_sort2 (*_g):   3.54294s
+function merge_sort2 (*_c):   3.86637s
+[FAIL] merge_sort2 (*_i): ->  maximum recursion depth exceeded while calling a Python object
+[FAIL] merge_sort3 (*_i): ->  maximum recursion depth exceeded while calling a Python object
+function (builtin) sorted:    0.00299841s
+_test runs in: 117.9187 seconds
 """
 
 """
