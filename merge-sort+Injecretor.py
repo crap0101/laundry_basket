@@ -8,13 +8,18 @@ import functools
 import heapq
 import itertools
 import sys
+import random
 import time
 
 
-###################
-# utility classes #
-###################
+####################################
+# utility classes and other things #
+####################################
 
+MERGE_FUNCS_NAMES = 'merge_sorted merge_sorted_c merge_sorted_g merge_sorted_i'.split()
+MSORT_FUNCS_NAMES = 'merge_sort merge_sort2 merge_sort3 merge_sort4'.split()
+OTHER_SORT_FUNC_NAMES = 'heap_sort bubble_sort'.split()
+GROUPING_FUNC_NAMES = 'group_sort group_sort2 until_sorti'.split()
 
 class Config:
     def __new__ (cls, **k):
@@ -71,6 +76,7 @@ class Injecretor:
 ########################
 
 def timer (f):
+    """To be used as decorator to track time."""
     def inner (*a, **k):
         ts = time.time()
         ret = f(*a, **k)
@@ -128,6 +134,7 @@ def group_sort2 (seq: Sequence) -> Sequence:
     return slst
 
 def reduce(func, seq, init=None):
+    """Simple reduce function."""
     it = iter(seq)
     if init is None:
         val = next(it)
@@ -191,28 +198,32 @@ def until_sorti (seq: Sequence) -> Iterable:
         yield lst
 
 def zip_2 (s1, s2, fillvalue=None):
-    """Returns pairs of item form `s1` and `s2`,
+    """Returns pairs of items from `s1` and `s2`,
     Stops at the end of the shorter seq, missing
     value will be replaced by `fillvalue`.
     """
+    _quit = 0
+    QUIT = 2
     is1 = iter(s1)
     is2 = iter(s2)
     while True:
+        _quit = 0
         ret = []
         try:
             v1 = next(is1)
             ret.append(v1)
         except StopIteration:
-            ret.append(None)
+            ret.append(fillvalue)
+            _quit += 1
         try:
             v2 = next(is2)
             ret.append(v2)
         except StopIteration:
-            ret.append(None)
-        yield tuple(ret)
-        if None in ret:
+            ret.append(fillvalue)
+            _quit += 1
+        if _quit == QUIT:
             return
-
+        yield tuple(ret)
 
 #####################
 # Merging functions #
@@ -244,8 +255,7 @@ def merge_sorted (s1: Sequence, s2: Sequence) -> Sequence:
 
 
 def merge_sorted_c (s1: Sequence, s2: Sequence) -> Iterable:
-    """Merge two ordered sequences returning a third. Better.
-    """
+    """Merge two ordered sequences returning a third. Better."""
     merged = collections.deque()
     g1 = Injecretor(s1,name='s1')
     g2 = Injecretor(s2,name='s2')
@@ -259,7 +269,6 @@ def merge_sorted_c (s1: Sequence, s2: Sequence) -> Iterable:
         except StopIteration:
             j = None
         try:
-            #print(c)
             if i <= j:
                 merged.append(i)
                 g2.send(j)
@@ -287,11 +296,11 @@ def merge_sorted_c (s1: Sequence, s2: Sequence) -> Iterable:
 
 
 def merge_sorted_g (s1: Sequence, s2: Sequence) -> Sequence:
-    """Merge two ordered sequences returning a third. Better?...slower o.O ."""
+    """Merge two ordered sequences returning a third."""
     g1 = Injecretor(s1,name='s1')
     g2 = Injecretor(s2,name='s2')
     merged = []
-    for i, j in itertools.zip_longest(g1, g2, fillvalue=None): #zip_2(g1, g2): 
+    for i, j in itertools.zip_longest(g1, g2, fillvalue=None):
         try:
             if i <= j:
                 merged.append(i)
@@ -317,7 +326,7 @@ def merge_sorted_g (s1: Sequence, s2: Sequence) -> Sequence:
     return merged
 
 def merge_sorted_i (s1: Sequence, s2: Sequence) -> Iterable:
-    """Merge two ordered sequences, returns an iterator."""
+    """Merge two ordered sequences, returns an iterator over the resulting seq."""
     g1 = Injecretor(s1,name='s1')
     g2 = Injecretor(s2,name='s2')
     for i, j in itertools.zip_longest(g1, g2, fillvalue=None):
@@ -362,7 +371,7 @@ def merge_sort2 (seq: Sequence, func: Callable = merge_sorted_g) -> Sequence:
     return list(functools.reduce(lambda a,b: list(func(a,b)), group_sort(seq), []))
 
 def merge_sort3 (seq: Sequence, func: Callable = merge_sorted_i) -> Sequence:
-    """merge sort...take advantage from partial ordered seqs"""
+    """merge sort...take advantage from partial ordered seqs."""
     d = collections.deque(group_sort(seq))
     if not d:
         return []
@@ -374,7 +383,7 @@ def merge_sort3 (seq: Sequence, func: Callable = merge_sorted_i) -> Sequence:
     return d.pop()
 
 def merge_sort4 (seq: Sequence, func: Callable = merge_sorted_i) -> Sequence:
-    """merge sort...take advantage from partial ordered seqs"""
+    """merge sort...take advantage from partial ordered seqs."""
     s = []
     for a,b in takes_f(group_sort(seq), 2):
         s.append(a if b is None else tuple(func(a,b)))
@@ -395,7 +404,7 @@ def merge_sort4 (seq: Sequence, func: Callable = merge_sorted_i) -> Sequence:
 # for comparison, others sorting methods #
 ##########################################
 
-def bubble_sort (seq):
+def bubble_sort (seq, func=None): # `func` ignored, just for compatibility with merge_sort* funcs
     s = list(seq)
     for i in range(len(s)):
         for j in range((len(s)-1)):
@@ -404,7 +413,7 @@ def bubble_sort (seq):
     return s
 
 
-def heap_sort (seq):
+def heap_sort (seq, func=None): # `func` ignored, just for compatibility with merge_sort* funcs
     s = list(seq)
     heapq.heapify(s)
     return list(heapq.heappop(s) for _ in range(len(s)))
@@ -419,85 +428,85 @@ def _test_iter (seqs):
         it = Injecretor(s)
         for i in it:
             pass
-    print('*** Test Injecretor: OK')
+    print('Injecretor: OK')
 
-def _test_merged (func1, func2, shortl=None, longl=None):
-    if shortl:
-        for args in shortl:
-            r1 = list(func1(*args))
-            r2 = list(func2(*args))
-            assert r1 == r2, 'ERR: {} != {}'.format(r1, r2)
-        print('assert (merge) [short]: OK')
-    if longl:
-        for l1, l2 in longl:
-            assert (list(sorted(list(l1)+list(l2)))
-                    == list(merge_sorted(l1,l2))
-                    == list(merge_sorted_g(l1, l2)))
-        print('assert (merge) [long]: OK')
+def _test_merged (fnames, lst):
+    funcs = list(itertools.combinations((globals()[name] for name in fnames), 2))
+    for pair in lst:
+        for f1, f2 in funcs:
+            r1 = list(f1(*pair))
+            r2 = list(f2(*pair))
+            assert r1 == r2, f'[FAIL]: {f1.__name__} <> {f2.__name}'
+    print('assert (merge): OK')
 
-def _test_msort (other_cmp=False):
-    from random import randint as ri
-    from random import shuffle
-    fmt_others = ''
+
+def _test_msort (msort_names, merge_names, other_names, compare_others):
+    ri = random.randint
+    shuffle = random.shuffle
     lsts = [list(range(ri(-100,100),ri(100,200))) for _ in range(100)]
     for lst in lsts:
         shuffle(lst)
+    msort_f = list(globals()[name] for name in msort_names)
+    merge_f = list(globals()[name] for name in merge_names)
+    other_f = list(globals()[name] for name in other_names)
+    fpairs = list(itertools.product(msort_f, merge_f))
     for lst in lsts:
-        s1 = list(merge_sort(lst, func=merge_sorted))
-        s2 = list(merge_sort(lst, func=merge_sorted_g))
-        s3 = list(merge_sort(lst, func=merge_sorted_c))
-        s4 = list(merge_sort2(lst))
-        s5 = list(merge_sort2(lst, func=merge_sorted_c))
-        s6 = list(merge_sort3(lst, func=merge_sorted_i))
-        s7 = list(merge_sort4(lst, func=merge_sorted_i))
-        s8 = sorted(lst)
-        assert s1 == s2, 'ERR (merge sort: merge_sorted <> merge_sorted_g): {} != {}'.format(s1, s2)
-        assert s1 == s3, 'ERR (merge_sort: merge_sorted <> merge_sorted_c): {} != {}'.format(s1, s3)
-        assert s1 == s4, 'ERR (merge_sort <> merge_sort2 (merge_sorted_g)): {} != {}'.format(s1, s4)
-        assert s1 == s5, 'ERR (merge_sort <> merge_sort2 (merge_sorted_c)): {} != {}'.format(s1, s5)
-        assert s1 == s6, 'ERR (merge_sort <> merge_sort3 (merge_sorted_i)): {} != {}'.format(s1, s6)
-        assert s1 == s7, 'ERR (merge_sort <> merge_sort4 (merge_sorted_4)): {} != {}'.format(s1, s7)
-        assert s1 == s8, 'ERR (merge_sort <> builtin sorted): {} != {}'.format(s1, s8)
-        if other_cmp:
-            fmt_others = '|others'
-            s9 = bubble_sort(lst)
-            s10 = heap_sort(lst)
-            assert s1 == s9, 'ERR (merge_sort <> bubble_sort): {} != {}'.format(s1, s9)
-            assert s1 == s10, 'ERR (merge_sort <> heap_sort): {} != {}'.format(s1, 10)
-    print('assert (merge-sort{}): OK'.format(fmt_others))
+        f1, f2 = fpairs[0]
+        r1 = list(f1(lst, f2))
+        for ff1, ff2 in fpairs[1:]:
+            r2 = list(ff1(lst, ff2))
+            assert r1 == r2, f'[FAIL] {f1.__name__}({f2.__name__}) <> {ff1.__name__}({ff2.__name__}) {r1} \n\n {r2}'
+        # compare with builtin sorted anyway
+        rs = sorted(lst)
+        assert r1 == rs, f'[FAIL] {f1.__name__}({f2.__name__}) <> builtin sorted()'
+        if compare_others:
+            for f in other_f:
+                ro = list(f(lst))
+                assert r1 == ro, f'[FAIL] {f1.__name__}({f2.__name__}) <> {f.__name__}'
+    print('assert (merge-sort): OK')
 
 def _test_sorting_vs_merging (sort_func, pair, merge_func=merge_sorted_i):
+    pair = map(list, pair)
     lst, lst2 = pair
     totlst = lst + lst2
+    _fail = 0
     # sort the list at once
-    t0 = time.time()
-    r1 = list(sort_func(totlst))
-    t1 = time.time()
     print('sorting func: {} | merging func: {}'.format(sort_func.__name__, merge_func.__name__))
-    print('sort at once:     {:.4f}'.format(t1-t0))
+    try:
+        print('{:20}'.format('sort at once:'), end='')
+        t0 = time.time()
+        r1 = list(sort_func(totlst, merge_func))
+        t1 = time.time()
+        print('{:.4f}'.format(t1-t0))
+    except RecursionError as e:
+        print('[Fail] {} | {} -> {}'.format(sort_func.__name__, merge_func.__name__, e))
+        _fail = 1
     # sort the lists, then merge
-    t0 = time.time()
-    p1 = sort_func(lst)
-    p2 = sort_func(lst2)
-    r2 = list(merge_func(p1, p2))
-    t1 = time.time()
-    print('sort, then merge: {:.4f}'.format(t1-t0))
-    assert r1 == r2, '[FAIL] got different results! {} \n\n!=\n\n {}'.format(r1, r2)
+    try:
+        print('{:20}'.format('sort, then merge:'), end='')
+        t0 = time.time()
+        p1 = sort_func(lst)
+        p2 = sort_func(lst2)
+        r2 = list(merge_func(p1, p2))
+        t1 = time.time()
+        print('{:.4f}'.format(t1-t0))
+    except RecursionError as e:
+        print('[Fail] {} | {} -> {}'.format(sort_func.__name__, merge_func.__name__, e))
+        _fail = 1
+    if not _fail:
+        assert r1 == r2, '[FAIL] got different results! {} \n\n!=\n\n {}'.format(r1, r2)
 
 
 @timer
-def _test (config, *in_args, other_cmp=False, test_time=False, test_funcs=False, debug=False, stats=False):
+def _test (config, parsed_cmdline, *in_args):
     from copy import deepcopy
-    from enum import Enum
-    from itertools import chain
-    ichain = chain.from_iterable
     from math import nan
-    from random import randint as ri
-    from random import shuffle
     import timeit
+    ichain = itertools.chain.from_iterable
+    ri = random.randint
+    shuffle = random.shuffle
     c = config
-    funcs_s = 'merge_sorted merge_sorted_c merge_sorted_g merge_sorted_i'.split()
-    setup = 'from __main__ import {}'.format(','.join(funcs_s))
+    p = parsed_cmdline
     report  = 'function {:30} {:.6f}s'
     # pair two by two, sorted lists
     if c.flen:
@@ -516,7 +525,7 @@ def _test (config, *in_args, other_cmp=False, test_time=False, test_funcs=False,
         shuffle(r2)
         lstr.append((r1,r2))
     test_cons_lst = deepcopy(lstr) 
-    if debug:
+    if p.debug:
         print('\n'.join(
             ' | '.join(f'len:{len(l):<5} min:{min(l,default=nan):<5} max:{max(l,default=nan):<5}'
                        for l in pair)
@@ -526,41 +535,38 @@ def _test (config, *in_args, other_cmp=False, test_time=False, test_funcs=False,
                 assert list(l) == list(sorted(l))
                 assert min(l) >= c.min and max(l) <= c.max, f'[FAIL] out of range: min: min(l) <? c.min | max(l) >? c.max'
         print('assert (sorted input): OK')
-    if test_funcs:
+    if p.test_funcs:
         ################
         # test iteration
+        print('*** Test iterators...')
         _test_iter(ichain(lstr))
+        ###############
+        # test merging
         print('*** Test merging...')
-        for a in in_args:
-            ###############
-            # test merging
-            _test_merged(merge_sorted, merge_sorted_g, shortl=a)
-            _test_merged(merge_sorted_g, merge_sorted_c, shortl=a)
-            _test_msort(other_cmp)
+        _test_merged(p.merge_funcs, lsts[:2])
+        _test_msort(p.msort_funcs, p.merge_funcs, p.other_sort_funcs, p.other_cmp)
         ###########################
         # test grouping and sorting
+        print('*** Test grouping...')
         for l in ichain(lstr[:5]):
-            g1, g2 = group_sort(l), group_sort2(l)
-            assert g1 == g2, "[FAIL] group_sort <> group_sort2"
-            assert g1 == list(until_sorti(l)), "[FAIL] group_sort <> until_sorti"
-        print('assert (group_sort*|until_sorti): OK')
-        print('*** Grouping times:')
-        stmt = 'for l in ichain(lstr[:10]): list(sort_two(l))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import sort_two', globals=locals()).timeit(c.repeat)
-        print(report.format('sort_two:', t/c.repeat))
-        stmt = 'for l in ichain(lstr[:10]): list(group_sort(l))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import group_sort', globals=locals()).timeit(c.repeat)
-        print(report.format('group_sort:', t/c.repeat))
-        stmt = 'for l in ichain(lstr[:10]): list(group_sort2(l))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import group_sort2', globals=locals()).timeit(c.repeat)
-        print(report.format('group_sort2:', t/c.repeat))
-        stmt = 'for l in ichain(lstr[:10]): list(until_sorti(l))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import until_sorti', globals=locals()).timeit(c.repeat)
-        print(report.format('until_sorti:', t/c.repeat))
-
-    if stats:
+            gf = list(itertools.combinations([globals()[name] for name in p.group_funcs], 2))
+            for f1, f2 in gf:
+                r1, r2 = list(f1(l)), list(f2(l))
+                assert r1 == r2, f"[FAIL] {f1.__name__} <> {f2.__name__}"
+        print('assert ({}): OK'.format(', '.join(p.group_funcs)))
+        #####################
+        # Miscellaneous tests
+        print('*** Tests misc...')
+        # sort_two would belongs to the sorting funcs, set aside because
+        # it works a little differently (and slower!)
+        for l in ichain(lstr[:5]):
+            for tup in sort_two(l):
+                if len(tup) == 2:
+                    assert tup[0] < tup[1], '[FAIL]: sort_two <> builtin sorted()'
+        print('sort_two: OK')
+    if p.stats:
         __format = '{:<20} {}{}'
-        print('***Some stats (merging):')
+        print('*** Some stats (merging):')
         print(__format.format('lists pairs', len(lsts), ''))
         for f, fname in [(min, 'min value'), (max, 'max value')]:
             r = f(itertools.chain(*itertools.chain.from_iterable(lsts)))
@@ -570,91 +576,57 @@ def _test (config, *in_args, other_cmp=False, test_time=False, test_funcs=False,
         print(__format.format('Shorter list:', min(llen), ' items'))
         print(__format.format('average length:', '{:.2f}'.format(sum(llen)/len(llen)), ''))
         print(__format.format('Total items:', sum(llen), ''))
-    if test_time:
-        print('*** Tests config: {}'.format(
-            ' | '.join('{}: {}'.format(*item) for item in c.as_dict().items())))
+    if p.test_time:
+        print('*** Test times...')
+        print('** config: {}'.format(
+            ' | '.join('{}={}'.format(*item) for item in c.as_dict().items())))
+        ####################
+        # test grouping time
+        print('** Grouping times:')
+        for f in p.group_funcs:
+            gf_setup = 'from __main__ import {}'.format(f)
+            gf_stmt = 'for l in ichain(lstr[:10]): list({}(l))'.format(f)
+            t  = timeit.Timer(stmt=gf_stmt, setup=gf_setup, globals=locals()).timeit(c.repeat)
+            print(report.format(f'{f}:', t/c.repeat))
         ######################################
         # test merging time (sorted sequences)
-        print('*** Merging times...')
-        for f in funcs_s:
+        print('** Merging times...')
+        for f in p.merge_funcs:
             try:
-                stmt = 'for pair in lsts: list({}(*pair))'.format(f)
-                t  = timeit.Timer(stmt=stmt, setup=setup, globals=locals()).timeit(c.repeat)
+                mf_setup = 'from __main__ import {}'.format(f)
+                mf_stmt = 'for pair in lsts: list({}(*pair))'.format(f)
+                t  = timeit.Timer(stmt=mf_stmt, setup=mf_setup, globals=locals()).timeit(c.repeat)
                 print(report.format(f'{f}:', t/c.repeat))
             except RecursionError as e:
                 print(report.format('[Fail] -> {}'.format(e)))
         ###########################
         # test sort/merge diversion
-        print('*** Sorting at once VS sorting then merging')
-        _test_sorting_vs_merging(merge_sort4, lstr[0])
-        _test_sorting_vs_merging(bubble_sort, lstr[0])
+        print('** Sorting at once VS sorting then merging')
+        for sort_func, merge_func in itertools.product(ichain([p.msort_funcs, p.other_sort_funcs]), p.merge_funcs):
+            _test_sorting_vs_merging(globals()[sort_func], lstr[0], merge_func=globals()[merge_func])
         ########################################
         # test sorting time (unsorted sequences)
-        print('*** Sorting times...')
-        # XXX+TODO: cmdline choose function to test
-        """#
-        # merge_sort
-        stmt = 'for l in ichain(lstr): list(merge_sort(l))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort', globals=locals()).timeit(c.repeat)
-        print(report.format('merge_sort (merge_sorted_g):', t/c.repeat))
-        # merge_sort2 | with merge_sorted
-        stmt = 'for l in ichain(lstr): list(merge_sort2(l, func=merge_sorted))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort2, merge_sorted', globals=locals()).timeit(c.repeat)
-        print(report.format('merge_sort2 (merge_sorted):', t/c.repeat))
-        # merge_sort2 | with merge_sorted_g
-        stmt = 'for l in ichain(lstr): list(merge_sort2(l, func=merge_sorted_g))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort2, merge_sorted_g', globals=locals()).timeit(c.repeat)
-        print(report.format('merge_sort2 (merge_sorted_g):', t/c.repeat))
-        # merge_sort2 | with merge_sorted_c
-        stmt = 'for l in ichain(lstr): list(merge_sort2(l, func=merge_sorted_c))'
-        t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort2, merge_sorted_c', globals=locals()).timeit(c.repeat)
-        print(report.format('merge_sort2 (merge_sorted_c):', t/c.repeat))
-        try:
-            # merge_sort2 | with merge_sorted_i
-            stmt = 'for l in ichain(lstr): list(merge_sort2(l, func=merge_sorted_i))'
-            t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort2, merge_sorted_i', globals=locals()).timeit(c.repeat)
-            print(report.format('merge_sort2 (merge_sorted_i):', t/c.repeat))
-        except RecursionError as e:
-            print('[FAIL] merge_sort2 (merge_sorted_i): -> ', e)
-        try:
-            # merge_sort3 | with merge_sorted_i
-            stmt = 'for l in ichain(lstr): list(merge_sort3(l, func=merge_sorted_i))'
-            t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort3, merge_sorted_i', globals=locals()).timeit(c.repeat)
-            print(report.format('merge_sort3 (merge_sorted_i):', t/c.repeat))
-        except RecursionError as e:
-            print('[FAIL] merge_sort3 (merge_sorted_i): -> ', e)
-        #"""
-        try:
-            # merge_sort4 | with merge_sorted_i
-            stmt = 'for l in ichain(lstr): list(merge_sort4(l, func=merge_sorted_i))'
-            t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort4, merge_sorted_i', globals=locals()).timeit(c.repeat)
-            print(report.format('merge_sort4 (merge_sorted_i):', t/c.repeat))
-        except RecursionError as e:
-            print('[FAIL] merge_sort4 (merge_sorted_i): -> ', e)
-        try:
-            # merge_sort4 | with merge_sorted
-            stmt = 'for l in ichain(lstr): list(merge_sort4(l, func=merge_sorted))'
-            t  = timeit.Timer(stmt=stmt, setup='from __main__ import merge_sort4, merge_sorted', globals=locals()).timeit(c.repeat)
-            print(report.format('merge_sort4 (merge_sorted):', t/c.repeat))
-        except RecursionError as e:
-            print('[FAIL] merge_sort4 (merge_sorted): -> ', e)
-            # builtin sorted
+        print('** Sorting times...')
+        for sort_func, merge_func in itertools.product(p.msort_funcs, p.merge_funcs):
+            try:
+                m_setup = f'from __main__ import {sort_func}, {merge_func}'
+                m_stmt = 'for l in ichain(lstr): list({}(l, func={}))'.format(sort_func, merge_func)
+                t  = timeit.Timer(stmt=m_stmt, setup=m_setup, globals=locals()).timeit(c.repeat)
+                print(report.format(f'{sort_func} ({merge_func}):', t/c.repeat))
+            except RecursionError as e:
+                print(f'[FAIL] {sort_func} ({merge_func}): -> ', e)
+        # builtin sorted
         stmt = 'for l in ichain(lstr): list(sorted(l))'
         t  = timeit.Timer(stmt=stmt, globals=locals()).timeit(c.repeat)
         print(report.format('(builtin) sorted:', t/c.repeat))
-        if other_cmp:
-            """#
-            # bubble_sort
-            stmt = 'for l in ichain(lstr): list(bubble_sort(l))'
-            t  = timeit.Timer(stmt=stmt, setup='from __main__ import bubble_sort', globals=locals()).timeit(c.repeat)
-            print(report.format('bubble_sort:', t/c.repeat))
-            #"""
-            # heap_sort
-            stmt = 'for l in ichain(lstr): list(heap_sort(l))'
-            t  = timeit.Timer(stmt=stmt, setup='from __main__ import heap_sort', globals=locals()).timeit(c.repeat)
-            print(report.format('heap_sort:', t/c.repeat))
+        if p.other_cmp:
+            for f in p.other_sort_funcs:
+                o_setup = f'from __main__ import {f}'
+                o_stmt = f'for l in ichain(lstr): list({f}(l))'
+                t  = timeit.Timer(stmt=o_stmt, setup=o_setup, globals=locals()).timeit(c.repeat)
+                print(report.format(f'{f}:', t/c.repeat))
         #######################
-        # final check, who say!
+        # final check, who say! ^-^
         for (a1, b1), (a2,b2) in zip(lstr, test_cons_lst):
             try:
                 assert a1 == a2 and b1 == b2, "[FAIL]: input data changed during execution!!!"
@@ -686,7 +658,15 @@ def get_parsed(test_config):
                    metavar='N', help='(test) timeit() repeat value (default: %(default)s)')
     p.add_argument('-t', '--test-time', dest='test_time', action='store_true', help='test time')
     p.add_argument('-T', '--test-functions', dest='test_funcs', action='store_true', help='test functions')
+    p.add_argument('-G', '--grouping-funcs', dest='group_funcs', choices=GROUPING_FUNC_NAMES, nargs='+', default=GROUPING_FUNC_NAMES,
+                   metavar='NAME', help='grouping functions to test, choice from: %(choices)s. Default: all.')
+    p.add_argument('-F', '--funcs', dest='msort_funcs', choices=MSORT_FUNCS_NAMES, nargs='+', default=MSORT_FUNCS_NAMES,
+                   metavar='NAME', help='merge-sort functions to test, choice from: %(choices)s. Default: all.')
+    p.add_argument('-u', '--merge-funcs', dest='merge_funcs', choices=MERGE_FUNCS_NAMES, nargs='+', default=MERGE_FUNCS_NAMES,
+                   metavar='NAME', help='merging functions to test, choice from: %(choices)s. Default: all.')
     p.add_argument('-C', '--compare-with', dest='other_cmp', action='store_true', help='(test) compare with others sorting functions')
+    p.add_argument('-O', '--other-funcs', dest='other_sort_funcs', choices=OTHER_SORT_FUNC_NAMES, nargs='+', default=OTHER_SORT_FUNC_NAMES,
+                   metavar='NAME', help='other sort functions to test (when using the -C option), choice from: %(choices)s. Default: all.')
     p.add_argument('-q', '--quit', dest='quit', action='store_true', help='quit after tests')
     p.add_argument('-d', '--debug', dest='debug', action='store_true', help='print debug info (tests only)')
     p.add_argument('-s', '--stats', dest='stats', action='store_true', help='print some stat (tests only)')    
@@ -707,7 +687,7 @@ if __name__ == '__main__':
     for k,v in c.as_dict().items():
         c[k] = getattr(p, k)
     if p.test_time or p.test_funcs:
-        _test(c, inputs, other_cmp=p.other_cmp, test_time=p.test_time, test_funcs=p.test_funcs, debug=p.debug, stats=p.stats)
+        _test(c, p, inputs)
         if p.quit:
             sys.exit(0)
     # brief example
@@ -719,257 +699,69 @@ if __name__ == '__main__':
 
 
 
-""" #XXX+TODO: mmm.. qualquadra non cosa, i test merge+sort separati con sorted danno risultati che dovrebbero essere opposti... o no?
-crap0101@orange:~/test$ python3   merge-sort+Injecretor.py -tsqTC  -l 1 -f 10000 -r 1  # manual source edit, cut some funcs
-*** Test Injecretor: OK
+
+
+"""
+crap0101@orange:~/test$ python3 merge-sort+Injecretor.py -tsqTC -l 1 -f 1000 -r 1 -F merge_sort merge_sort4 -u merge_sorted merge_sorted_i -O heap_sort bubble_sort
+*** Test iterators...
+Injecretor: OK
 *** Test merging...
-assert (merge) [short]: OK
-assert (merge) [short]: OK
-assert (merge-sort|others): OK
-assert (group_sort*|until_sorti): OK
-*** Grouping times:
-function sort_two:                      0.011508s
-function group_sort:                    0.006127s
-function group_sort2:                   0.011352s
-function until_sorti:                   0.026530s
-***Some stats (merging):
+assert (merge): OK
+assert (merge-sort): OK
+*** Test grouping...
+assert (group_sort, group_sort2, until_sorti): OK
+*** Tests misc...
+sort_two: OK
+*** Some stats (merging):
 lists pairs          1
-lists min value:     -10000
-lists max value:     10000
-Longer list:         10000 items
-Shorter list:        10000 items
-average length:      10000.00
-Total items:         20000
-*** Tests config: min: -10000 | max: 10000 | len: 1 | flen: 10000 | repeat: 1
-*** Merging times...
-function merge_sorted:                  0.009053s
-function merge_sorted_c:                0.036091s
-function merge_sorted_g:                0.032321s
-function merge_sorted_i:                0.031789s
-*** Sorting at once VS sorting then merging
+lists min value:     -9995
+lists max value:     9994
+Longer list:         1000 items
+Shorter list:        1000 items
+average length:      1000.00
+Total items:         2000
+*** Test times...
+** config: min=-10000 | max=10000 | len=1 | flen=1000 | repeat=1
+** Grouping times:
+function group_sort:                    0.000524s
+function group_sort2:                   0.000974s
+function until_sorti:                   0.002395s
+** Merging times...
+function merge_sorted:                  0.000754s
+function merge_sorted_i:                0.002778s
+** Sorting at once VS sorting then merging
+sorting func: merge_sort | merging func: merge_sorted
+sort at once:       0.2831
+sort, then merge:   0.5544
+sorting func: merge_sort | merging func: merge_sorted_i
+sort at once:       [Fail] merge_sort | merge_sorted_i -> maximum recursion depth exceeded while calling a Python object
+sort, then merge:   0.5616
+sorting func: merge_sort4 | merging func: merge_sorted
+sort at once:       0.0093
+sort, then merge:   0.0353
 sorting func: merge_sort4 | merging func: merge_sorted_i
-sort at once: 0.5320
-sort, then merge: 0.5276
+sort at once:       0.0371
+sort, then merge:   0.0370
+sorting func: heap_sort | merging func: merge_sorted
+sort at once:       0.0011
+sort, then merge:   0.0017
+sorting func: heap_sort | merging func: merge_sorted_i
+sort at once:       0.0011
+sort, then merge:   0.0037
+sorting func: bubble_sort | merging func: merge_sorted
+sort at once:       0.8470
+sort, then merge:   0.4165
 sorting func: bubble_sort | merging func: merge_sorted_i
-sort at once: 99.6497
-sort, then merge: 42.4056
-*** Sorting times...
-function merge_sort4 (merge_sorted_i):  0.492202s
-function merge_sort4 (merge_sorted):    0.123019s
-function (builtin) sorted:              0.004057s
-function heap_sort:                     0.014773s
+sort at once:       0.8423
+sort, then merge:   0.4108
+** Sorting times...
+function merge_sort (merge_sorted):     0.147638s
+[FAIL] merge_sort (merge_sorted_i): ->  maximum recursion depth exceeded while calling a Python object
+function merge_sort4 (merge_sorted):    0.008512s
+function merge_sort4 (merge_sorted_i):  0.034610s
+function (builtin) sorted:              0.000267s
+function heap_sort:                     0.001052s
+function bubble_sort:                   0.437113s
 *** Test data consistency: OK
-_test runs in: 149.5972 seconds
+_test runs in: 6.3803 seconds
 """
-
-"""
-crap0101@orange:~/test$ python3  merge-sort+Injecretor.py -tsqTC -m100 -M600 -l 100 -r 5 
-*** Test Injecretor: OK
-*** Test merging...
-assert (merge) [short]: OK
-assert (merge) [short]: OK
-assert (merge-sort|others): OK
-assert (group_sort*|until_sorti): OK
-*** Grouping times:
-function sort_two:                      0.001349s
-function group_sort:                    0.000606s
-function group_sort2:                   0.001294s
-function until_sorti:                   0.003562s
-***Some stats (merging):
-lists pairs          100
-lists min value:     0
-lists max value:     599
-Longer list:         468 items
-Shorter list:        3 items
-average length:      167.33
-Total items:         33466
-*** Tests config: min: 100 | max: 600 | len: 100 | repeat: 5
-*** Merging times...
-function merge_sorted:                  0.012176s
-function merge_sorted_c:                0.056200s
-function merge_sorted_g:                0.049226s
-function merge_sorted_i:                0.049015s
-*** Sorting times...
-function merge_sort (merge_sorted_g):   2.551426s
-function merge_sort2 (merge_sorted):    0.623720s
-function merge_sort2 (merge_sorted_g):  2.588979s
-function merge_sort2 (merge_sorted_c):  2.852323s
-function merge_sort2 (merge_sorted_i):  2.492043s
-function merge_sort3 (merge_sorted_i):  2.554920s
-function merge_sort4 (merge_sorted_i):  0.513805s
-function merge_sort4 (merge_sorted):    0.121229s
-function (builtin) sorted:              0.003178s
-function bubble_sort:                   1.619951s
-function heap_sort:                     0.015377s
-Test data consistency: OK
-_test runs in: 86.2501 seconds
-"""
-
-"""
-crap0101@orange:~/test$ python3 merge-sort+Injecretor.py -h
-usage: merge-sort+Injecretor.py [-h] [-m N] [-M N] [-l LEN] [-f N] [-r N] [-t]
-                                [-T] [-C] [-q] [-d] [-s]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -m N, --min N         (test) lists min value (-10000)
-  -M N, --max N         (test) lists max value (10000)
-  -l LEN, --len LEN     (test) number of lists pairs (1001)
-  -f N, --fixed-len N   (test) generate lists with N items (default: 8000)
-  -r N, --repeat N      (test) timeit() repeat value (default: 1000)
-  -t, --test-time       test time
-  -T, --test-functions  test functions
-  -C, --compare-with    (test) compare with others sorting functions
-  -q, --quit            quit after tests
-  -d, --debug           print debug info (tests only)
-  -s, --stats           print some stat (tests only)
-"""
-
-"""
-crap0101@orange:~/test$ python3 merge-sort+Injecretor.py 
-------
-[MS]  input: [] [] -> []
-[MSG] input: [] [] -> []
-------
-[MS]  input: [] range(0, 5) -> [0, 1, 2, 3, 4]
-[MSG] input: [] range(0, 5) -> [0, 1, 2, 3, 4]
-------
-[MS]  input: range(0, 9) [] -> [0, 1, 2, 3, 4, 5, 6, 7, 8]
-[MSG] input: range(0, 9) [] -> [0, 1, 2, 3, 4, 5, 6, 7, 8]
-------
-[MS]  input: range(0, 10) range(5, 15) -> [0, 1, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 12, 13, 14]
-[MSG] input: range(0, 10) range(5, 15) -> [0, 1, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 11, 12, 13, 14]
-------
-[MS]  input: range(6, 12) range(0, 5) -> [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11]
-[MSG] input: range(6, 12) range(0, 5) -> [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11]
-------
-[MS]  input: range(0, 10) range(2, 6) -> [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
-[MSG] input: range(0, 10) range(2, 6) -> [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
-------
-[MS]  input: range(2, 6) range(0, 10) -> [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
-[MSG] input: range(2, 6) range(0, 10) -> [0, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9]
-------
-[MS]  input: range(0, 1) range(1, 2) -> [0, 1]
-[MSG] input: range(0, 1) range(1, 2) -> [0, 1]
-"""
-
-
-######## other runs... mainly from previous revisions
-
-""" ###XXX+TODO: Lenta... lenta...
-crap0101@orange:~/test$ python3  merge-sort+Injecretor.py -tsqTC -m-300 -M500 -l 100 -r 10 
-test Injecretor: OK
-*** Test merging...
-assert (merge) [short]: OK
-assert (merge) [short]: OK
-assert (merge-sort): OK
-assert (group_sort*|until_sorti): OK
-function sort_two:            0.001749s
-function group_sort:          0.000750s
-function group_sort2:         0.001701s
-function until_sorti:         0.004433s
-***Some stats (merging):
-list pairs:        100
-lists min value:       -297
-lists max value:        490
-Longer list:           728 items
-Shorter list:            3 items
-average length:     210.49
-Total items:         42098
-*** Time tests config: min: -300 | max: 500 | len: 100 | repeat: 10
-*** Merging times...
-function merge_sorted:        0.015531s
-function merge_sorted_c:      0.070140s
-function merge_sorted_g:      0.060672s
-function merge_sorted_i:      0.060177s
-*** Sorting times...
-function merge_sort:          4.156328s
-function merge_sort2 (*_g):   4.176925s
-function merge_sort2 (*_c):   4.567855s
-function merge_sort2 (*_i):   4.023452s
-function merge_sort3 (*_i):   4.114324s
-function merge_sort4 (*_i):   0.700929s
-function (builtin) sorted:    0.004408s
-function bubble_sort:         2.599283s
-Test data consistency: OK
-_test runs in: 250.8556 seconds
-"""    
-
-""" ### Seems not so stable ^L^
-crap0101@orange:~/test$ python3  merge-sort+Injecretor.py -tsqTC -r 1 -l 1
-test Injecretor: OK
-*** Test merging...
-assert (merge) [short]: OK
-assert (merge) [short]: OK
-assert (merge-sort): OK
-assert (group_sort*|until_sorti): OK
-function sort_two:            0.000949s
-function group_sort:          0.000417s
-function group_sort2:         0.000919s
-function until_sorti:         0.002279s
-***Some stats (merging):
-list pairs:          1
-lists min value:          0
-lists max value:       3333
-Longer list:           902 items
-Shorter list:          902 items
-average length:     902.00
-Total items:          1804
-*** Time tests config: min: -10000 | max: 10000 | len: 1 | repeat: 1
-*** Merging times...
-function merge_sorted:        0.000681s
-function merge_sorted_c:      0.003009s
-function merge_sorted_g:      0.002676s
-function merge_sorted_i:      0.002621s
-*** Sorting times...
-function merge_sort (*_g):    0.483354s
-function merge_sort2 (merge_sorted): 0.124735s
-function merge_sort2 (*_g):   0.491245s
-function merge_sort2 (*_c):   0.530668s
-function merge_sort2 (*_i):   0.466901s
-function merge_sort3 (*_i):   0.490612s
-function merge_sort4 (*_i):   0.034804s
-function (builtin) sorted:    0.000229s
-function bubble_sort:         0.322256s
-Test data consistency: OK
-_test runs in: 8.3609 seconds
-crap0101@orange:~/test$ python3  merge-sort+Injecretor.py -tsqTC -r 1 -l 1
-test Injecretor: OK
-*** Test merging...
-assert (merge) [short]: OK
-assert (merge) [short]: OK
-assert (merge-sort): OK
-assert (group_sort*|until_sorti): OK
-function sort_two:                      0.015538s
-function group_sort:                    0.009027s
-function group_sort2:                   0.015749s
-function until_sorti:                   0.036427s
-***Some stats (merging):
-list pairs:          1
-lists min value:      -8871
-lists max value:       4769
-Longer list:         13641 items
-Shorter list:        13641 items
-average length:   13641.00
-Total items:         27282
-*** Time tests config: min: -10000 | max: 10000 | len: 1 | repeat: 1
-*** Merging times...
-function merge_sorted:                  0.010913s
-function merge_sorted_c:                0.046710s
-function merge_sorted_g:                0.042386s
-function merge_sorted_i:                0.041012s
-*** Sorting times...
-function merge_sort (merge_sorted_g):   105.623984s
-function merge_sort2 (merge_sorted):    27.128372s
-function merge_sort2 (merge_sorted_g):  105.725386s
-function merge_sort2 (merge_sorted_c):  119.193799s
-function merge_sort2 (merge_sorted_i):  101.951429s
-function merge_sort3 (merge_sorted_i):  103.075798s
-function merge_sort4 (merge_sorted_i):  0.668725s
-function merge_sort4 (merge_sorted):    0.178412s
-function (builtin) sorted:              0.006054s
-function bubble_sort:                   78.496800s
-Test data consistency: OK
-_test runs in: 647.8974 seconds
-"""
-
