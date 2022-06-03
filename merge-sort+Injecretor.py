@@ -3,18 +3,27 @@
 
 import argparse
 import collections 
-from collections.abc import Sequence, Callable, Iterable
 import functools
 import heapq
 import itertools
 import sys
 import random
 import time
+from typing import Callable, Collection, Iterable, Sequence
+from typing import Any, Generic, TypeVar
+
 
 
 ####################################
 # utility classes and other things #
 ####################################
+
+T = TypeVar('T')
+S = TypeVar('S')
+class Pair(Generic[T,S]):
+    pass
+class IntSeq(Collection[int]):
+    pass
 
 MERGE_FUNCS_NAMES = 'merge_sorted merge_sorted_c merge_sorted_g merge_sorted_i'.split()
 MSORT_FUNCS_NAMES = 'merge_sort merge_sort2 merge_sort3 merge_sort4'.split()
@@ -133,8 +142,8 @@ def group_sort2 (seq: Sequence) -> Sequence:
         slst.append(last)
     return slst
 
-def reduce(func, seq, init=None):
-    """Simple reduce function."""
+def reduce(func: Callable, seq: Sequence, init: Any = None) -> Any:
+    """Simple reduce function. use `init` as extra initial value."""
     it = iter(seq)
     if init is None:
         val = next(it)
@@ -164,8 +173,9 @@ def takes (seq: Sequence, n: int) -> Iterable:
             return
         yield p
 
-def takes_f (seq: Sequence, n: int, fillvalue=None) -> Iterable:
-    """Yields chunk of `n` items a times from `seq`"""
+def takes_f (seq: Sequence, n: int, fillvalue: Any = None) -> Iterable:
+    """Yields chunk of *exactly* `n` items a times from `seq`.
+    Use `fillvalue` as replacement for missing values."""
     it = iter(seq)
     while True:
         p = list(itertools.islice(it, 0, n))
@@ -197,11 +207,9 @@ def until_sorti (seq: Sequence) -> Iterable:
     if lst:
         yield lst
 
-def zip_2 (s1, s2, fillvalue=None):
-    """Returns pairs of items from `s1` and `s2`,
-    Stops at the end of the shorter seq, missing
-    value will be replaced by `fillvalue`.
-    """
+def zip_2 (s1: Sequence, s2: Sequence, fillvalue: Any = None) -> Iterable:
+    """Yields pairs of items from `s1` and `s2` stopping at the
+    end of the shorter sequence, with missing value replaced by `fillvalue`."""
     _quit = 0
     QUIT = 2
     is1 = iter(s1)
@@ -364,7 +372,6 @@ def merge_sort (seq: Sequence, func: Callable = merge_sorted_g) -> Sequence:
     #reduce = functools.reduce
     return list(functools.reduce(func, sort_two(seq), []))
 
-
 def merge_sort2 (seq: Sequence, func: Callable = merge_sorted_g) -> Sequence:
     """Merge-sort... take advantage from partial ordered seqs."""
     #reduce = functools.reduce
@@ -404,7 +411,9 @@ def merge_sort4 (seq: Sequence, func: Callable = merge_sorted_i) -> Sequence:
 # for comparison, others sorting methods #
 ##########################################
 
-def bubble_sort (seq, func=None): # `func` ignored, just for compatibility with merge_sort* funcs
+def bubble_sort (seq: Sequence, func: Any = None) -> Sequence:
+    """Bubble sort. `func` parameter ignored
+    (here just for compatibility with merge_sort* funcs)."""
     s = list(seq)
     for i in range(len(s)):
         for j in range((len(s)-1)):
@@ -412,8 +421,9 @@ def bubble_sort (seq, func=None): # `func` ignored, just for compatibility with 
                 s[j], s[j+1] = s[j+1], s[j]
     return s
 
-
-def heap_sort (seq, func=None): # `func` ignored, just for compatibility with merge_sort* funcs
+def heap_sort (seq: Sequence, func: Any = None) -> Sequence:
+    """Heap sort. `func` parameter ignored
+    (here just for compatibility with merge_sort* funcs)."""
     s = list(seq)
     heapq.heapify(s)
     return list(heapq.heappop(s) for _ in range(len(s)))
@@ -423,14 +433,14 @@ def heap_sort (seq, func=None): # `func` ignored, just for compatibility with me
 # Tests #
 #########
 
-def _test_iter (seqs):
+def _test_iter (seqs: Collection[Sequence]):
     for s in seqs:
         it = Injecretor(s)
         for i in it:
             pass
     print('Injecretor: OK')
 
-def _test_merged (fnames, lst):
+def _test_merged (fnames: Collection[str], lst: Collection[Pair[IntSeq, IntSeq]]):
     funcs = list(itertools.combinations((globals()[name] for name in fnames), 2))
     for pair in lst:
         for f1, f2 in funcs:
@@ -440,7 +450,7 @@ def _test_merged (fnames, lst):
     print('assert (merge): OK')
 
 
-def _test_msort (msort_names, merge_names, other_names, compare_others):
+def _test_msort (msort_names, merge_names, other_names, compare_others: bool):
     ri = random.randint
     shuffle = random.shuffle
     lsts = [list(range(ri(-100,100),ri(100,200))) for _ in range(100)]
@@ -465,7 +475,7 @@ def _test_msort (msort_names, merge_names, other_names, compare_others):
                 assert r1 == ro, f'[FAIL] {f1.__name__}({f2.__name__}) <> {f.__name__}'
     print('assert (merge-sort): OK')
 
-def _test_sorting_vs_merging (sort_func, pair, merge_func=merge_sorted_i):
+def _test_sorting_vs_merging (sort_func, pair: Pair[Sequence,Sequence], merge_func=merge_sorted_i):
     pair = map(list, pair)
     lst, lst2 = pair
     totlst = lst + lst2
@@ -498,7 +508,7 @@ def _test_sorting_vs_merging (sort_func, pair, merge_func=merge_sorted_i):
 
 
 @timer
-def _test (config, parsed_cmdline, *in_args):
+def _test (config, parsed_cmdline):
     from copy import deepcopy
     from math import nan
     import timeit
@@ -687,7 +697,7 @@ if __name__ == '__main__':
     for k,v in c.as_dict().items():
         c[k] = getattr(p, k)
     if p.test_time or p.test_funcs:
-        _test(c, p, inputs)
+        _test(c, p)
         if p.quit:
             sys.exit(0)
     # brief example
