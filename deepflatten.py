@@ -40,6 +40,7 @@ def _import_module (mod_name):
 HAVE_IT_UT = bool(_import_module('iteration_utilities'))
 HAVE_PAN = bool(_import_module('pandas'))
 HAVE_MAT = bool(_import_module('matplotlib'))
+HAVE_MORE = bool(_import_module('more_itertools'))
 
 ###########################
 # FLATTEN IMPLEMENTATIONS #
@@ -160,6 +161,7 @@ def _example():
     ll = [range(10),1,2, "foo", [], ['a','b','c'], 3,4,[5,6,7,8],
           range(10),7,8,9,[10,11,[12,13,[14,15,[16,17],18,19],20,21],22],23]
     print('*** EXAMPLE:')
+    print('** INPUT:')
     print(ll)
     _exec(iflatten,ll)
     _exec(iflatten,ll,ignore=(REC_TYPES))
@@ -167,55 +169,65 @@ def _example():
     _exec(dflatten,ll)
     _exec(flatten_cglacet,ll)
     if HAVE_IT_UT:
-        iu = iteration_utilities.deepflatten
-        _exec(iu,ll,prepend=iu.__module__+'.')
+        _exec(iteration_utilities.deepflatten,ll)
     if HAVE_PAN:
         pf = pandas.core.common.flatten
         _exec(pf,ll,prepend=pf.__module__+'.')
     if HAVE_MAT:
         mp = matplotlib.cbook.flatten
         _exec(mp,ll,prepend=mp.__module__+'.')
+    if HAVE_MORE:
+        _exec(more_itertools.collapse,ll)
 
 
 #######################
 ####### TESTS #########
 #######################
 
-def _test_it_ut(lst, r):
+def _test_it_ut(lst, r, fmt_report):
     I = REC_TYPES
     try:
         t = timeit.Timer('list(itu.deepflatten(lst, depth=10000, ignore=I))',
                          'from __main__ import iteration_utilities as itu', globals=locals()).timeit(r)
-        print('deepflatten: {:.4}s'.format(t/r))
+        print(fmt_report.format('deepflatten:', t/r))
     except RecursionError as e:
         print('[FAIL] deepflatten:', e)
 
-def _test_pandas(lst, r):
+def _test_pandas(lst, r, fmt_report):
     try:
         t = timeit.Timer('list(pandas.core.common.flatten(lst))',
                          'from __main__ import pandas', globals=locals()).timeit(r)
-        print('pandas: {:.4}s'.format(t/r))
+        print(fmt_report.format('pandas:', t/r))
     except RecursionError as e:
         print('[FAIL] pandas.core.common.flatten:', e)
         
-def _test_matp(lst, r):
+def _test_matp(lst, r, fmt_report):
     try:
         t = timeit.Timer('list(matplotlib.cbook.flatten(lst))',
                          'from __main__ import matplotlib', globals=locals()).timeit(r)
-        print('matplotlib: {:.4}s'.format(t/r))
+        print(fmt_report.format('matplotlib:', t/r))
     except RecursionError as e:
         print('[FAIL] matplotlib.cbook.flatten:', e)
 
+def _test_moreit(lst, r, fmt_report):
+    try:
+        t = timeit.Timer('list(mo.collapse(lst))',
+                         'from __main__ import more_itertools as mo', globals=locals()).timeit(r)
+        print(fmt_report.format('collapse:', t/r))
+    except RecursionError as e:
+        print('[FAIL] more_itertools.collapse:', e)
 
 def _test_eq(depth=1000):
     print('*** Test eq:')
     l = mklst_to_depth(depth)
     funcs = (flatten, iflatten, dflatten)
     funcs_o = (flatten_cglacet,)
-    funcs_argh = [] # test these too, with proper (short) input
+    # test these too, with proper (short) input
+    funcs_argh = []
     if HAVE_IT_UT: funcs_argh.append(iteration_utilities.deepflatten)
     if HAVE_PAN: funcs_argh.append(pandas.core.common.flatten)
     if HAVE_MAT: funcs_argh.append(matplotlib.cbook.flatten)
+    if HAVE_MORE:funcs_argh.append(more_itertools.collapse)
     ig = REC_TYPES
     for f1, f2 in itertools.combinations(funcs, 2):
         assert list(f1(l)) == list(f2(l)), f'[FAIL] {f1.__name__} <> {f2.__name__}'
@@ -249,19 +261,21 @@ def _test_times(depth=1000, repeats=100):
     t = timeit.Timer('flatten_cglacet(l)', 'from __main__ import flatten_cglacet', globals=locals()).timeit(r)
     print(_report.format('flatten_cglacet:', t/r))
     if HAVE_IT_UT:
-        _test_it_ut(l, r)
+        _test_it_ut(l, r, _report)
     if HAVE_PAN:
-        _test_pandas(l, r)
+        _test_pandas(l, r, _report)
     if HAVE_MAT:
-        _test_matp(l, r)
+        _test_matp(l, r, _report)
+    if HAVE_MORE:
+        _test_moreit(l, r, _report)
     return
-    #print(l) #### RecursionError
-    #print('-----')
-    #print()
+
     ### Summary of unsuccessfully tests:
+    # print(l)                    # RecursionError  ( ^L^ )
     # pandas.core.common.flatten  # RecursionError
     # matplotlib.cbook.flatten    # RecursionError
     # iteration_utilities         # RecursionError (recursion depth reached (?))
+    # more_itertools.collapse     # RecursionError
     # numpy.ndarray.flat          # nope
     # numpy.ndarray.flatten       # nope
     
@@ -272,10 +286,11 @@ def _test(depth=1000, repeats=100):
 
 if __name__ == '__main__':
     _example()
-    _test(repeats=10)
+    _test(repeats=20)
 """
-crap0101@orange:~/test$ python3 flat.py 
+crap0101@orange:~/test$ python3 deepflatten.py 
 *** EXAMPLE:
+** INPUT:
 [range(0, 10), 1, 2, 'foo', [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], range(0, 10), 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23]
 ----- iflatten ({}):
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
@@ -291,69 +306,56 @@ crap0101@orange:~/test$ python3 flat.py
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 ----- matplotlib.cbook.flatten ({}):
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- collapse ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
-assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten)
+assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
 *** Test times:
-** config: list depth=1000 | repeats=10
-iflatten:          0.0368s
-flatten:           0.0407s
-dflatten:          0.0380s
-flatten_cglacet:   0.0430s
+** config: list depth=1000 | repeats=20
+iflatten:          0.0377s
+flatten:           0.0416s
+dflatten:          0.0393s
+flatten_cglacet:   0.0437s
 [FAIL] pandas.core.common.flatten: maximum recursion depth exceeded in comparison
 [FAIL] matplotlib.cbook.flatten: maximum recursion depth exceeded while calling a Python object
+[FAIL] more_itertools.collapse: maximum recursion depth exceeded in __instancecheck__
 """
 
 """
-crap0101@orange:~/test$ ./PY3ENV/bin/python flat.py 
-*** EXAMPLE:
-[range(0, 10), 1, 2, 'foo', [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], range(0, 10), 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23]
------ iflatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
-[...OMITTED OUTPUT...]
------ iteration_utilities.deepflatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py
+[... OMITTED OUTPUT ...]
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
-assert eq: OK (deepflatten)
+assert eq: OK (iteration_utilities.deepflatten)
 ******************************
 *** Test times:
-** config: list depth=1000 | repeats=10
-iflatten:          0.0370s
-flatten:           0.0412s
-dflatten:          0.0387s
-flatten_cglacet:   0.0421s
+** config: list depth=1000 | repeats=20
+iflatten:          0.0375s
+flatten:           0.0414s
+dflatten:          0.0392s
+flatten_cglacet:   0.0424s
 [FAIL] deepflatten: `deepflatten` reached maximum recursion depth.
 """
 
 # less depth:
 """
-crap0101@orange:~/test$ python3 flat.py 
-[range(0, 10), 1, 2, 'foo', [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], range(0, 10), 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23]
------ iflatten:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
-ignore=(REC_TYPES) iflatten:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ flatten:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ dflatten:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ flatten_cglacet:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ pandas.core.common.flatten:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ matplotlib.cbook.flatten:
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+[... OMITTED OUTPUT ...]
+*** Test eq:
+assert eq: OK (flatten,iflatten,dflatten)
+assert eq: OK (flatten_cglacet)
+assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
 *** Test times:
-** config: list depth=500 | repeats=2
-iflatten: 0.002946s
-flatten:  0.4569s
-dflatten: 0.4457s
-flatten_cglacet: 0.003462s
-pandas: 0.01669s
-matplotlib: 0.01423s
+** config: list depth=700 | repeats=20
+iflatten:          0.0264s
+flatten:           0.0294s
+dflatten:          0.0276s
+flatten_cglacet:   0.0306s
+pandas:            0.3669s
+matplotlib:        0.3314s
+collapse:          0.4260s
 """
