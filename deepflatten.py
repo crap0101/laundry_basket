@@ -1,17 +1,12 @@
 
-from typing import Collection,Sequence,Iterable
+import argparse
+import builtins
 from collections import deque
 import importlib
 import itertools
 import timeit
-
-###########
-# DEFVALS #
-###########
-
-NESTED_TYPES = (Collection,Sequence,Iterable)
-REC_TYPES = (str,bytes)
-IGNORED_TYPES = ()
+import typing
+from typing import Collection, Sequence, Iterable
 
 #######################
 ###### UTILITIES ######
@@ -25,6 +20,12 @@ def mklst_to_depth (depth=1000, length=10):
         ll = ll[-1]
     return l
 
+def _check_cmdline (parser, namespace):
+    if namespace.DEPTH < 0:
+        parser.error('constrain violation: DEPTH < 0')
+    if namespace.REPEATS < 1:
+        parser.error('constrain violation: REPEATS < 1')
+
 def _import_module (mod_name):
     try:
         m = importlib.import_module(mod_name)
@@ -33,9 +34,59 @@ def _import_module (mod_name):
         m = None
     return m
 
-#################
-# EXTRA MODULES #
-#################
+def _import_types (type_names, module_names):
+    ret = []
+    err_imp = None
+    err_att = None
+    for t in type_names:
+        if not isinstance(t, str):
+            # if not a string of a (possibly) type name, assuming already a type
+            ret.append(t)
+            continue
+        for m in module_names:
+            try:
+                if isinstance(m, str):
+                    mod = importlib.import_module(m)
+                else:
+                    # assuming already a module
+                    mod = m
+                ty = getattr(mod, t)
+                ret.append(ty)
+                break
+            except ImportError as i:
+                err_imp = i
+            except AttributeError as a:
+                err_att = a
+        else:
+            if err_imp:
+                raise ImportError(err_imp)
+            elif err_att:
+                raise AttributeError(err_att)
+            raise AttributeError('BUG! Should not be here!!!')
+    return ret
+
+def _set_defval (namespace):
+    if isinstance(namespace, argparse.Namespace):
+        try:
+            kv = namespace.__dict__
+        except AttributeError:
+            kv = dict(namespace._get_kwargs())
+    else:
+        kv = namespace    
+    for k,v in kv.items():
+        globals()[k] = v
+
+####################################
+# EXTRA MODULES and DEFAULT VALUES #
+####################################
+
+_DEFVALS = {
+    'NESTED_TYPES': (Collection,Sequence,Iterable,),
+    'REC_TYPES': (str,bytes,),
+    'IGNORED_TYPES': (),
+    'DEPTH': 1000,
+    'REPEATS': 100,}
+_set_defval(_DEFVALS)
 
 HAVE_IT_UT = bool(_import_module('iteration_utilities'))
 HAVE_PAN = bool(_import_module('pandas'))
@@ -147,7 +198,10 @@ def flatten_cglacet (seq):
     return flatten(seq)
 
 
-#######################
+############
+# EXAMPLES #
+############
+
 def _example():
     def _exec(f, *args, **kw):
         if 'prepend' in kw:
@@ -164,7 +218,8 @@ def _example():
     print('** INPUT:')
     print(ll)
     _exec(iflatten,ll)
-    _exec(iflatten,ll,ignore=(REC_TYPES))
+    _exec(iflatten,ll,ignore=REC_TYPES)
+    _exec(iflatten,ll,ignore=IGNORED_TYPES)
     _exec(flatten,ll)
     _exec(dflatten,ll)
     _exec(flatten_cglacet,ll)
@@ -283,12 +338,62 @@ def _test(depth=1000, repeats=100):
     _test_eq(depth)
     _test_times(depth, repeats)
 
+###################
+# CMDLINE PARSING #
+###################
+
+def get_parser(config):
+    ep = 'NOTE: using -sre option may change tests behaviour, till to fail.'
+    p = argparse.ArgumentParser(epilog=ep)
+    p.add_argument('-d', '--depth', dest='DEPTH', type=int, default=config['DEPTH'],
+                   metavar='N', help="depth for nested lists. Default:(%(default)s)")
+    p.add_argument('-R', '--repeats', dest='REPEATS', type=int, default=config['REPEATS'],
+                   metavar='N', help='timeit repeats times. Default:(%(default)s)')
+    p.add_argument('-s', '--stype', dest='NESTED_TYPES', default=config['NESTED_TYPES'],
+                   nargs='+',
+                   help=('type names to be considered sequence to iterate on. '
+                         'Builtin tipyes or '
+                         'something from the typing or collections.abc modules. '
+                         'Default: (%(default)s)'))
+    p.add_argument('-r', '--rtype', dest='REC_TYPES', default=config['REC_TYPES'],
+                   nargs='+',
+                   help=('recursive type names to be treat specially (to avoid infinite loop). '
+                         'Something from the typing or collections.abc modules. '
+                         'Default: (%(default)s)'))
+    p.add_argument('-e', '--exclude', dest='IGNORED_TYPES', default=config['IGNORED_TYPES'],
+                   nargs='+',
+                   help=('type names to be ignored (will not be flatted). '
+                         'Default: (%(default)s)'))
+    p.add_argument('-E', '--example', dest='__config_example', action='store_true',
+                   help="Run a short example of outputs. Default:(%(default)s)")
+    p.add_argument('-n', '--no-test', dest='__config_no_test', action='store_true',
+                   help="Do not run tests. Default:(%(default)s)")
+    return p
+    
 
 if __name__ == '__main__':
-    _example()
-    _test(repeats=20)
+    p = get_parser(_DEFVALS)
+    namespace = p.parse_args()
+    _check_cmdline(p, namespace)
+    # if custom type names were passed at commandline, check and set them
+    typeslist = list(name for name,args in _DEFVALS.items() if name.endswith('_TYPES'))
+    _d = namespace.__dict__
+    for name in typeslist:
+        t = _d[name]
+        tt = _import_types(t, ('builtins', 'typing'))
+        _d[name] = tuple(tt)
+    # set globally the namespace - for keys in _DEFVALS (only these right now)
+    # XXX+TODO: exclude foreign option-variables, when/if added in the parser)
+    # UPDATE: choose to namese these variale as __config_{name}
+    _set_defval(namespace)
+    if namespace.__config_example:
+        _example()
+    if not namespace.__config_no_test:
+        _test(namespace.DEPTH, namespace.REPEATS)
+
+
 """
-crap0101@orange:~/test$ python3 deepflatten.py 
+crap0101@orange:~/test$ python3 deepflatten.py -R 10 -E
 *** EXAMPLE:
 ** INPUT:
 [range(0, 10), 1, 2, 'foo', [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], range(0, 10), 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23]
@@ -296,6 +401,8 @@ crap0101@orange:~/test$ python3 deepflatten.py
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 ----- iflatten ({'ignore': (<class 'str'>, <class 'bytes'>)}):
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- iflatten ({'ignore': ()}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 ----- flatten ({}):
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 ----- dflatten ({}):
@@ -314,48 +421,79 @@ assert eq: OK (flatten_cglacet)
 assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
 *** Test times:
-** config: list depth=1000 | repeats=20
-iflatten:          0.0377s
-flatten:           0.0416s
-dflatten:          0.0393s
-flatten_cglacet:   0.0437s
+** config: list depth=1000 | repeats=10
+iflatten:          0.0375s
+flatten:           0.0402s
+dflatten:          0.0383s
+flatten_cglacet:   0.0424s
 [FAIL] pandas.core.common.flatten: maximum recursion depth exceeded in comparison
 [FAIL] matplotlib.cbook.flatten: maximum recursion depth exceeded while calling a Python object
 [FAIL] more_itertools.collapse: maximum recursion depth exceeded in __instancecheck__
-"""
-
-"""
-crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py
-[... OMITTED OUTPUT ...]
-*** Test eq:
-assert eq: OK (flatten,iflatten,dflatten)
-assert eq: OK (flatten_cglacet)
-assert eq: OK (iteration_utilities.deepflatten)
-******************************
-*** Test times:
-** config: list depth=1000 | repeats=20
-iflatten:          0.0375s
-flatten:           0.0414s
-dflatten:          0.0392s
-flatten_cglacet:   0.0424s
-[FAIL] deepflatten: `deepflatten` reached maximum recursion depth.
-"""
-
-# less depth:
-"""
-[... OMITTED OUTPUT ...]
+crap0101@orange:~/test$ python3 deepflatten.py -R 10 -En -e list
+*** EXAMPLE:
+** INPUT:
+[range(0, 10), 1, 2, 'foo', [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], range(0, 10), 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23]
+----- iflatten ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- iflatten ({'ignore': (<class 'str'>, <class 'bytes'>)}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- iflatten ({'ignore': (<class 'list'>,)}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23, 
+----- flatten ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- dflatten ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- flatten_cglacet ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- pandas.core.common.flatten ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- matplotlib.cbook.flatten ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+----- collapse ({}):
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+crap0101@orange:~/test$ python3 deepflatten.py -R 10 -d 700 # let failing functions to terminate
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
 *** Test times:
-** config: list depth=700 | repeats=20
+** config: list depth=700 | repeats=10
 iflatten:          0.0264s
-flatten:           0.0294s
-dflatten:          0.0276s
-flatten_cglacet:   0.0306s
-pandas:            0.3669s
-matplotlib:        0.3314s
-collapse:          0.4260s
+flatten:           0.0283s
+dflatten:          0.0270s
+flatten_cglacet:   0.0301s
+pandas:            0.3640s
+matplotlib:        0.3299s
+collapse:          0.4399s
+"""
+
+# runs in a virtual environment for testing iteration_utilities module:
+"""
+crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 
+*** Test eq:
+assert eq: OK (flatten,iflatten,dflatten)
+assert eq: OK (flatten_cglacet)
+assert eq: OK (iteration_utilities.deepflatten)
+******************************
+*** Test times:
+** config: list depth=1000 | repeats=10
+iflatten:          0.0372s
+flatten:           0.0410s
+dflatten:          0.0385s
+flatten_cglacet:   0.0420s
+[FAIL] deepflatten: `deepflatten` reached maximum recursion depth.
+crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 -d 900 # let failing functions to terminate
+*** Test eq:
+assert eq: OK (flatten,iflatten,dflatten)
+assert eq: OK (flatten_cglacet)
+assert eq: OK (iteration_utilities.deepflatten)
+******************************
+*** Test times:
+** config: list depth=900 | repeats=10
+iflatten:          0.0337s
+flatten:           0.0365s
+dflatten:          0.0349s
+flatten_cglacet:   0.0388s
+deepflatten:       0.0029s
 """
