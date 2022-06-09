@@ -272,6 +272,32 @@ def _test_moreit(lst, r, fmt_report):
     except RecursionError as e:
         print('[FAIL] more_itertools.collapse:', e)
 
+
+def _test_out():
+    print('*** Test output:')
+    inout_map = [(range(10), list(range(10))),
+                 ([1],[1]),
+                 ([], []),
+                 ([1,[2,3,(4,5,6,[7,8,9])]], list(range(1,10)))
+    ]
+    for input, output in inout_map:
+        for f in (flatten, dflatten, iflatten):
+            fout = list(f(input))
+            assert fout == output, f'[FAIL]: {f.__name__}: out: {fout} != {output}'
+    lst = mklst_to_depth(10)
+    for f in (flatten, dflatten):
+        assert f(lst) == list(f(lst, as_iter=True)), f'[FAIL]: {f.__name__}: as_iter=True'
+    _in, _out, _out_ig_str, _out_ig_lst = (
+        [1, 2,'foo', 3, [1]], [1, 2,'f','o','o', 3, 1], [1, 2,'foo', 3, 1], [1, 2,'foo', 3, [1]])
+    for f in (flatten, dflatten, iflatten):
+        fout = list(f(_in))
+        assert fout  == _out, f'[FAIL]: {f.__name__}: {fout} |= {_out}'
+        fout = list(f(_in, ignore=REC_TYPES))
+        assert fout == _out_ig_str, f'[FAIL]: {f.__name__}: {fout} |= {_out_ig_str}'
+        fout = list(f(_in, ignore=(list,str)))
+        assert fout == _out_ig_lst, f'[FAIL]: {f.__name__}: {fout} |= {_out_ig_lst}'
+    print('assert out: OK')
+
 def _test_eq(depth=1000):
     print('*** Test eq:')
     l = mklst_to_depth(depth)
@@ -335,6 +361,7 @@ def _test_times(depth=1000, repeats=100):
     # numpy.ndarray.flatten       # nope
     
 def _test(depth=1000, repeats=100):
+    _test_out()
     _test_eq(depth)
     _test_times(depth, repeats)
 
@@ -415,6 +442,8 @@ crap0101@orange:~/test$ python3 deepflatten.py -R 10 -E
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 ----- collapse ({}):
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+*** Test output:
+assert out: OK
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
@@ -452,6 +481,8 @@ crap0101@orange:~/test$ python3 deepflatten.py -R 10 -En -e list
 ----- collapse ({}):
 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 crap0101@orange:~/test$ python3 deepflatten.py -R 10 -d 700 # let failing functions to terminate
+*** Test output:
+assert out: OK
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
@@ -471,6 +502,8 @@ collapse:          0.4399s
 # runs in a virtual environment for testing iteration_utilities module:
 """
 crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 
+*** Test output:
+assert out: OK
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
@@ -484,6 +517,8 @@ dflatten:          0.0385s
 flatten_cglacet:   0.0420s
 [FAIL] deepflatten: `deepflatten` reached maximum recursion depth.
 crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 -d 900 # let failing functions to terminate
+*** Test output:
+assert out: OK
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
