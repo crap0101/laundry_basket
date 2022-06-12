@@ -98,7 +98,7 @@ HAVE_MORE = bool(_import_module('more_itertools'))
 ###########################
 
 def dflatten (seq, ignore=IGNORED_TYPES, as_iter=False):
-    """flat using deque"""
+    """deep-flat using deque"""
     def inner_flat (seq, ignore):
         d = deque(seq)
         while d:
@@ -114,42 +114,19 @@ def dflatten (seq, ignore=IGNORED_TYPES, as_iter=False):
                 elif skip_ignored:
                     yield s
                 else:
-                    for item in reversed(s):
-                        d.appendleft(item)
+                    for idx, item in enumerate(s):
+                        d.insert(idx, item)
             else:
                 yield s
     gen = inner_flat(seq, ignore)
     return gen if as_iter else list(gen)
 
-def flatten (seq, ignore=IGNORED_TYPES, as_iter=False):
-    """flat using list"""
-    def inner_flat (seq, ignore):
-        d = list(seq)
-        while d:
-            s = d.pop(0)
-            if isinstance(s, NESTED_TYPES):
-                skip_ignored = isinstance(s, ignore)
-                if isinstance(s, REC_TYPES):
-                    if skip_ignored:
-                        yield s
-                    else:
-                        for i in s:
-                            yield i
-                elif skip_ignored:
-                    yield s
-                else:
-                    for item in reversed(s):
-                        d.insert(0, item)
-            else:
-                yield s
-    gen = inner_flat(seq, ignore)
-    return gen if as_iter else list(gen)
 
-def iflatten (seq, ignore=IGNORED_TYPES):
-    """deep-flat `seq` yielding items."""
-    d = deque(seq)
+def flatten (seq, ignore=IGNORED_TYPES):
+    """deep-flat `seq` yielding items (using list)."""
+    d = list(seq)
     while d:
-        s = d.popleft()
+        s = d.pop(0)
         if isinstance(s, NESTED_TYPES):
             skip_ignored = isinstance(s, ignore)
             if isinstance(s, REC_TYPES):
@@ -161,9 +138,34 @@ def iflatten (seq, ignore=IGNORED_TYPES):
             elif skip_ignored:
                 yield s
             else:
-                d.extendleft(reversed(s))
+                for idx, item in enumerate(s):
+                    d.insert(idx, item)
         else:
             yield s
+
+def iflatten (seq, ignore=IGNORED_TYPES):
+    """deep-flat using list. Works with infinite sequences."""
+    d = deque((iter(seq),))
+    while d:
+        x = d[0]
+        for item in x:
+            skip_ignored = isinstance(item, ignore)
+            if isinstance(item, NESTED_TYPES):
+                if isinstance(item, REC_TYPES):
+                    if skip_ignored:
+                        yield item
+                    else:
+                        for i in item:
+                            yield i
+                elif skip_ignored:
+                    yield item
+                else:
+                    d.appendleft(iter(item))
+                    break
+            else:
+                yield item
+        else:
+            d.popleft()
 
 
 ##################################
@@ -278,14 +280,14 @@ def _test_out():
     inout_map = [(range(10), list(range(10))),
                  ([1],[1]),
                  ([], []),
-                 ([1,[2,3,(4,5,6,[7,8,9])]], list(range(1,10)))
+                 ([1,[2,3,(4,[],5,6,[[[],[]],7,8,9])]], list(range(1,10)))
     ]
     for input, output in inout_map:
         for f in (flatten, dflatten, iflatten):
             fout = list(f(input))
             assert fout == output, f'[FAIL]: {f.__name__}: out: {fout} != {output}'
     lst = mklst_to_depth(10)
-    for f in (flatten, dflatten):
+    for f in (dflatten,):
         assert f(lst) == list(f(lst, as_iter=True)), f'[FAIL]: {f.__name__}: as_iter=True'
     _in, _out, _out_ig_str, _out_ig_lst = (
         [1, 2,'foo', 3, [1]], [1, 2,'f','o','o', 3, 1], [1, 2,'foo', 3, 1], [1, 2,'foo', 3, [1]])
@@ -293,11 +295,30 @@ def _test_out():
         fout = list(f(_in))
         assert fout  == _out, f'[FAIL]: {f.__name__}: {fout} |= {_out}'
         fout = list(f(_in, ignore=REC_TYPES))
-        assert fout == _out_ig_str, f'[FAIL]: {f.__name__}: {fout} |= {_out_ig_str}'
+        assert fout == _out_ig_str, f'[FAIL]: {f.__name__}: {fout} != {_out_ig_str}'
         fout = list(f(_in, ignore=(list,str)))
-        assert fout == _out_ig_lst, f'[FAIL]: {f.__name__}: {fout} |= {_out_ig_lst}'
+        assert fout == _out_ig_lst, f'[FAIL]: {f.__name__}: {fout} != {_out_ig_lst}'
+    # test with iterators
+    i_out = [1, 2, 3, 4, 5, 6, 'f', 'o', 'o', 7, 1, 2, 3, 11, 12, 22, 24, 8, (11, 11), 9]
+    for f in (flatten, dflatten, iflatten):
+        out  =list(f([1,2,3,[4,5,[6,'foo',7,[1,2,3],iter([11,12,[22,24]]),8,(11,11),9]]], ignore=(tuple,)))
+        assert out == i_out, f'[FAIL]: {f.__name__}: {out} != {i_out}'
     print('assert out: OK')
 
+def _test_inf(time_max=10):
+    import time
+    t = time.time()
+    try:
+        deep = 0
+        for i in iflatten(itertools.cycle([1])):
+            print('\r(Cntr-C to stop) Deep level: {}'.format(deep), end='')
+            deep += 1
+            if (time.time() - t) > time_max:
+                break
+    except KeyboardInterrupt:
+        pass
+    print()
+    
 def _test_eq(depth=1000):
     print('*** Test eq:')
     l = mklst_to_depth(depth)
@@ -311,7 +332,7 @@ def _test_eq(depth=1000):
     if HAVE_MORE:funcs_argh.append(more_itertools.collapse)
     ig = REC_TYPES
     for f1, f2 in itertools.combinations(funcs, 2):
-        assert list(f1(l)) == list(f2(l)), f'[FAIL] {f1.__name__} <> {f2.__name__}'
+        assert list(f1(l)) == list(f2(l)), f'[FAIL] {f1.__name__} <> {f2.__name__} {a} != {b}'
         assert list(f1(l, ignore=ig)) == list(f2(l, ignore=ig)), f'[FAIL] {f1.__name__} <> {f2.__name__} (ignore=REC_TYPES)'
     print('assert eq: OK ({})'.format(','.join(f.__name__ for f in funcs)))
     ft = funcs[0]
@@ -334,7 +355,7 @@ def _test_times(depth=1000, repeats=100):
     print(f'** config: list depth={depth} | repeats={repeats}')
     t = timeit.Timer('list(iflatten(l))', 'from __main__ import iflatten', globals=locals()).timeit(r)
     print(_report.format('iflatten:', t/r))
-    t = timeit.Timer('flatten(l)', 'from __main__ import flatten', globals=locals()).timeit(r)
+    t = timeit.Timer('list(flatten(l))', 'from __main__ import flatten', globals=locals()).timeit(r)
     print(_report.format('flatten:', t/r))
     t = timeit.Timer('dflatten(l)', 'from __main__ import dflatten', globals=locals()).timeit(r)
     print(_report.format('dflatten:', t/r))
@@ -362,6 +383,7 @@ def _test_times(depth=1000, repeats=100):
     
 def _test(depth=1000, repeats=100):
     _test_out()
+    _test_inf()
     _test_eq(depth)
     _test_times(depth, repeats)
 
@@ -409,10 +431,7 @@ if __name__ == '__main__':
         t = _d[name]
         tt = _import_types(t, ('builtins', 'typing'))
         _d[name] = tuple(tt)
-    # set globally the namespace - for keys in _DEFVALS (only these right now)
-    # XXX+TODO: exclude foreign option-variables, when/if added in the parser)
-    # UPDATE: choose to namese these variale as __config_{name}
-    _set_defval(namespace)
+    _set_defval(_d)
     if namespace.__config_example:
         _example()
     if not namespace.__config_no_test:
@@ -420,115 +439,82 @@ if __name__ == '__main__':
 
 
 """
-crap0101@orange:~/test$ python3 deepflatten.py -R 10 -E
-*** EXAMPLE:
-** INPUT:
-[range(0, 10), 1, 2, 'foo', [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], range(0, 10), 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23]
------ iflatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ iflatten ({'ignore': (<class 'str'>, <class 'bytes'>)}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ iflatten ({'ignore': ()}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ flatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ dflatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ flatten_cglacet ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ pandas.core.common.flatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ matplotlib.cbook.flatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ collapse ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
+>>> list(iflatten([1,2,3,['a',4,[],5,[6,'foo',7,[1,2,3],iter([11,12,[22,24]]),8,(11,11),9]]]))
+[1, 2, 3, 'a', 4, 5, 6, 'f', 'o', 'o', 7, 1, 2, 3, 11, 12, 22, 24, 8, 11, 11, 9]
+>>> 
+"""
+
+"""
+crap0101@orange:~/test$ python3 deepflatten.py 
 *** Test output:
 assert out: OK
+(Cntr-C to stop) Deep level: 783153
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
 *** Test times:
-** config: list depth=1000 | repeats=10
-iflatten:          0.0375s
-flatten:           0.0402s
-dflatten:          0.0383s
-flatten_cglacet:   0.0424s
+** config: list depth=1000 | repeats=100
+iflatten:          0.0369s
+flatten:           0.0403s
+dflatten:          0.0391s
+flatten_cglacet:   0.0421s
 [FAIL] pandas.core.common.flatten: maximum recursion depth exceeded in comparison
 [FAIL] matplotlib.cbook.flatten: maximum recursion depth exceeded while calling a Python object
 [FAIL] more_itertools.collapse: maximum recursion depth exceeded in __instancecheck__
-crap0101@orange:~/test$ python3 deepflatten.py -R 10 -En -e list
-*** EXAMPLE:
-** INPUT:
-[range(0, 10), 1, 2, 'foo', [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], range(0, 10), 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23]
------ iflatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ iflatten ({'ignore': (<class 'str'>, <class 'bytes'>)}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ iflatten ({'ignore': (<class 'list'>,)}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, [], ['a', 'b', 'c'], 3, 4, [5, 6, 7, 8], 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, [10, 11, [12, 13, [14, 15, [16, 17], 18, 19], 20, 21], 22], 23, 
------ flatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ dflatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ flatten_cglacet ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, f, o, o, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ pandas.core.common.flatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ matplotlib.cbook.flatten ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
------ collapse ({}):
-0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, foo, a, b, c, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
-crap0101@orange:~/test$ python3 deepflatten.py -R 10 -d 700 # let failing functions to terminate
+crap0101@orange:~/test$ python3 deepflatten.py  -R 10 -d 500 # let failing functions to terminate
 *** Test output:
 assert out: OK
+(Cntr-C to stop) Deep level: 122060^C
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
 *** Test times:
-** config: list depth=700 | repeats=10
-iflatten:          0.0264s
-flatten:           0.0283s
-dflatten:          0.0270s
-flatten_cglacet:   0.0301s
-pandas:            0.3640s
-matplotlib:        0.3299s
-collapse:          0.4399s
+** config: list depth=500 | repeats=10
+iflatten:          0.0194s
+flatten:           0.0210s
+dflatten:          0.0206s
+flatten_cglacet:   0.0216s
+pandas:            0.1445s
+matplotlib:        0.1240s
+collapse:          0.1617s
 """
 
 # runs in a virtual environment for testing iteration_utilities module:
 """
-crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 
+crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py
 *** Test output:
 assert out: OK
+(Cntr-C to stop) Deep level: 111060^C
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (iteration_utilities.deepflatten)
 ******************************
 *** Test times:
-** config: list depth=1000 | repeats=10
-iflatten:          0.0372s
-flatten:           0.0410s
-dflatten:          0.0385s
-flatten_cglacet:   0.0420s
+** config: list depth=1000 | repeats=100
+iflatten:          0.0366s
+flatten:           0.0393s
+dflatten:          0.0380s
+flatten_cglacet:   0.0411s
 [FAIL] deepflatten: `deepflatten` reached maximum recursion depth.
-crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 -d 900 # let failing functions to terminate
+crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 -d 990 # let failing functions to terminate
 *** Test output:
 assert out: OK
+(Cntr-C to stop) Deep level: 102050^C
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (iteration_utilities.deepflatten)
 ******************************
 *** Test times:
-** config: list depth=900 | repeats=10
-iflatten:          0.0337s
-flatten:           0.0365s
-dflatten:          0.0349s
-flatten_cglacet:   0.0388s
-deepflatten:       0.0029s
+** config: list depth=990 | repeats=10
+iflatten:          0.0366s
+flatten:           0.0397s
+dflatten:          0.0379s
+flatten_cglacet:   0.0419s
+deepflatten:       0.0036s
 """
