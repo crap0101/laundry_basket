@@ -2,7 +2,8 @@
 # >= 3.8.10
 
 import argparse
-import collections 
+import collections
+from collections import deque
 import functools
 import heapq
 import itertools
@@ -24,6 +25,12 @@ class Pair(Generic[T,S]):
     pass
 class IntSeq(Collection[int]):
     pass
+
+# for iflatten:
+IGNORED_TYPES = ()
+NESTED_TYPES = (Collection,Sequence,Iterable,)
+REC_TYPES = (str,bytes,)
+# ^
 
 MERGE_FUNCS_NAMES = 'merge_sorted merge_sorted_c merge_sorted_g merge_sorted_i'.split()
 MSORT_FUNCS_NAMES = 'merge_sort merge_sort2 merge_sort3 merge_sort4'.split()
@@ -98,11 +105,31 @@ def timer (f):
 # utility functions #
 #####################
 
-
-def flatten (seq: Sequence) -> Sequence:
-    raise NotImplementedError #XXX+TODO: implement this
-    isinstance(item, (Collection,Sequence,Iterable))
-    
+# from https://github.com/crap0101/laundry_basket/blob/master/deepflatten.py
+def iflatten (seq, ignore=IGNORED_TYPES):
+    """deep-flat using list. Works with infinite sequences."""
+    d = deque((iter(seq),))
+    while d:
+        x = d[0]
+        for item in x:
+            skip_ignored = isinstance(item, ignore)
+            if isinstance(item, NESTED_TYPES):
+                if isinstance(item, REC_TYPES):
+                    if skip_ignored:
+                        yield item
+                    else:
+                        for i in item:
+                            yield i
+                elif skip_ignored:
+                    yield item
+                else:
+                    d.appendleft(iter(item))
+                    break
+            else:
+                yield item
+        else:
+            d.popleft()
+                
 def group_sort (seq: Sequence) -> Sequence:
     """Returns items from `seq` grouped while sorted."""
     slst = []
@@ -546,7 +573,7 @@ def _test (config, parsed_cmdline):
             ' | '.join(f'len:{len(l):<5} min:{min(l,default=nan):<5} max:{max(l,default=nan):<5}'
                        for l in pair)
             for pair in lsts))
-        #XXX+TODO: number of unique element per seq (`flatten` to be implemented)
+        #
         for pair in lsts:
             for l in pair:
                 assert list(l) == list(sorted(l))
@@ -579,7 +606,7 @@ def _test (config, parsed_cmdline):
         for l in ichain(lstr[:5]):
             for tup in sort_two(l):
                 if len(tup) == 2:
-                    assert tup[0] <= tup[1], '[FAIL]: sort_two <> builtin sorted()'
+                    assert tup[0] <= tup[1], f'[FAIL]: sort_two: {tup[0]} > {tup[1]}'
         print('sort_two: OK')
     if p.stats:
         __format = '{:<20} {}{}'
@@ -593,6 +620,7 @@ def _test (config, parsed_cmdline):
         print(__format.format('Shorter list:', min(llen), ' items'))
         print(__format.format('average length:', '{:.2f}'.format(sum(llen)/len(llen)), ''))
         print(__format.format('Total items:', sum(llen), ''))
+        print(__format.format('Unique elements:', len(set(iflatten(lsts))), ''))
     if p.test_time:
         print('*** Test times...')
         print('** config: {}'.format(
@@ -715,31 +743,9 @@ if __name__ == '__main__':
             lsts, list(merge_sorted_g(*lsts))))
 
 
-        #XX+TODO: sembra esserci qualche problema quando nella command line c'è sia -m X -M Y che -f Z
-"""
-crap0101@orange:~/test$ python3 merge-sort+Injecretor.py -tsqTC -l 10 -m100 -M300 -f 1000 -r 1 -F merge_sort merge_sort4 -u merge_sorted merge_sorted_i -O heap_sort bubble_sort
-*** Test iterators...
-Injecretor: OK
-*** Test merging...
-assert (merge): OK
-assert (merge-sort): OK
-*** Test grouping...
-assert (group_sort, group_sort2, until_sorti): OK
-*** Tests misc...
-Traceback (most recent call last):
-  File "merge-sort+Injecretor.py", line 701, in <module>
-    _test(c, p)
-  File "merge-sort+Injecretor.py", line 91, in inner
-    ret = f(*a, **k)
-  File "merge-sort+Injecretor.py", line 576, in _test
-    assert tup[0] < tup[1], '[FAIL]: sort_two <> builtin sorted()'
-AssertionError: [FAIL]: sort_two <> builtin sorted()
-crap0101@orange:~/test$ 
-"""
-
 
 """
-crap0101@orange:~/test$ python3 merge-sort+Injecretor.py -tsqTC -l 1 -f 1000 -r 1 -F merge_sort merge_sort4 -u merge_sorted merge_sorted_i -O heap_sort bubble_sort
+crap0101@orange:~/test$ python3 merge_sort_and_Injecretor.py -tsqTC -l 10 -m-1000 -M3000 -f 1000 -r 1 -F merge_sort merge_sort4 -u merge_sorted merge_sorted_i -O heap_sort bubble_sort
 *** Test iterators...
 Injecretor: OK
 *** Test merging...
@@ -750,55 +756,56 @@ assert (group_sort, group_sort2, until_sorti): OK
 *** Tests misc...
 sort_two: OK
 *** Some stats (merging):
-lists pairs          1
-lists min value:     -9995
-lists max value:     9994
+lists pairs          10
+lists min value:     -1000
+lists max value:     3000
 Longer list:         1000 items
 Shorter list:        1000 items
 average length:      1000.00
-Total items:         2000
+Total items:         20000
+Unique elements:     3975
 *** Test times...
-** config: min=-10000 | max=10000 | len=1 | flen=1000 | repeat=1
+** config: min=-1000 | max=3000 | len=10 | flen=1000 | repeat=1
 ** Grouping times:
-function group_sort:                    0.000524s
-function group_sort2:                   0.000974s
-function until_sorti:                   0.002395s
+function group_sort:                    0.004663s
+function group_sort2:                   0.009882s
+function until_sorti:                   0.024548s
 ** Merging times...
-function merge_sorted:                  0.000754s
-function merge_sorted_i:                0.002778s
+function merge_sorted:                  0.007481s
+function merge_sorted_i:                0.029025s
 ** Sorting at once VS sorting then merging
 sorting func: merge_sort | merging func: merge_sorted
-sort at once:       0.2831
-sort, then merge:   0.5544
+sort at once:       0.2974
+sort, then merge:   0.5688
 sorting func: merge_sort | merging func: merge_sorted_i
 sort at once:       [Fail] merge_sort | merge_sorted_i -> maximum recursion depth exceeded while calling a Python object
-sort, then merge:   0.5616
+sort, then merge:   0.5679
 sorting func: merge_sort4 | merging func: merge_sorted
-sort at once:       0.0093
-sort, then merge:   0.0353
+sort at once:       0.0100
+sort, then merge:   0.0361
 sorting func: merge_sort4 | merging func: merge_sorted_i
-sort at once:       0.0371
-sort, then merge:   0.0370
+sort at once:       0.0381
+sort, then merge:   0.0381
 sorting func: heap_sort | merging func: merge_sorted
 sort at once:       0.0011
-sort, then merge:   0.0017
+sort, then merge:   0.0018
 sorting func: heap_sort | merging func: merge_sorted_i
 sort at once:       0.0011
-sort, then merge:   0.0037
+sort, then merge:   0.0039
 sorting func: bubble_sort | merging func: merge_sorted
-sort at once:       0.8470
-sort, then merge:   0.4165
+sort at once:       0.8179
+sort, then merge:   0.4007
 sorting func: bubble_sort | merging func: merge_sorted_i
-sort at once:       0.8423
-sort, then merge:   0.4108
+sort at once:       0.8190
+sort, then merge:   0.3988
 ** Sorting times...
-function merge_sort (merge_sorted):     0.147638s
+function merge_sort (merge_sorted):     1.429597s
 [FAIL] merge_sort (merge_sorted_i): ->  maximum recursion depth exceeded while calling a Python object
-function merge_sort4 (merge_sorted):    0.008512s
-function merge_sort4 (merge_sorted_i):  0.034610s
-function (builtin) sorted:              0.000267s
-function heap_sort:                     0.001052s
-function bubble_sort:                   0.437113s
+function merge_sort4 (merge_sorted):    0.084594s
+function merge_sort4 (merge_sorted_i):  0.356608s
+function (builtin) sorted:              0.002537s
+function heap_sort:                     0.010431s
+function bubble_sort:                   4.069651s
 *** Test data consistency: OK
-_test runs in: 6.3803 seconds
+_test runs in: 12.0864 seconds
 """
