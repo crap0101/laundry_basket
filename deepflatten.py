@@ -5,14 +5,18 @@ from collections import deque
 import importlib
 import itertools
 import timeit
-import typing
-from typing import Collection, Sequence, Iterable
+from types import ModuleType
+from typing import Collection, Sequence, Iterable, Mapping
+from typing import Type, Union
+
 
 #######################
 ###### UTILITIES ######
 #######################
     
-def mklst_to_depth (depth=1000, length=10):
+def mklst_to_depth (depth: int =1000, length: int =10) -> list:
+    """Returns a list nested $depth levels, populated with
+    sublists of $length elements."""
     l = [0,[1,1]]
     ll = l[-1]
     for i in range(depth):
@@ -20,13 +24,17 @@ def mklst_to_depth (depth=1000, length=10):
         ll = ll[-1]
     return l
 
-def _check_cmdline (parser, namespace):
+def _check_cmdline (parser: argparse.ArgumentParser, namespace: argparse.Namespace) -> None:
+    """Check out $parser's $namespace for illegal values.
+    Raise ArgumentParser.error if found something."""
     if namespace.DEPTH < 0:
         parser.error('constrain violation: DEPTH < 0')
     if namespace.REPEATS < 1:
         parser.error('constrain violation: REPEATS < 1')
 
-def _import_module (mod_name):
+def _import_module (mod_name: str) -> ModuleType:
+    """Try importing the module $mod_name, returns
+    the module or, if not found, None."""
     try:
         m = importlib.import_module(mod_name)
         globals()[mod_name] = m
@@ -34,7 +42,10 @@ def _import_module (mod_name):
         m = None
     return m
 
-def _import_types (type_names, module_names):
+def _import_types (type_names: Sequence[str], module_names: Sequence[str]) -> Sequence[Type]:
+    """Returns a sequence of types provided in $type_names from the
+    modules in $module_names (in case of types defined in more than one
+    module, pick the first encountered)."""
     ret = []
     err_imp = None
     err_att = None
@@ -65,7 +76,8 @@ def _import_types (type_names, module_names):
             raise AttributeError('BUG! Should not be here!!!')
     return ret
 
-def _set_defval (namespace):
+def _set_defval (namespace: Union[argparse.Namespace,Mapping]) -> None:
+    """Sets global values from $namespace."""
     if isinstance(namespace, argparse.Namespace):
         try:
             kv = namespace.__dict__
@@ -93,12 +105,17 @@ HAVE_PAN = bool(_import_module('pandas'))
 HAVE_MAT = bool(_import_module('matplotlib'))
 HAVE_MORE = bool(_import_module('more_itertools'))
 
+
 ###########################
 # FLATTEN IMPLEMENTATIONS #
 ###########################
 
-def dflatten (seq, ignore=IGNORED_TYPES, as_iter=False):
-    """deep-flat using deque"""
+def dflatten (seq: Sequence,
+              ignore: Sequence[Type] =IGNORED_TYPES,
+              as_iter: bool =False) -> Union[Iterable,Sequence]:
+    """Deep-flat $seq (using deque).
+    $ignore must be a type or a tuple of types to ignore while flattering.
+    If $as_iter is Truem, return an iterable instead of a list."""
     def inner_flat (seq, ignore):
         d = deque(seq)
         while d:
@@ -122,8 +139,9 @@ def dflatten (seq, ignore=IGNORED_TYPES, as_iter=False):
     return gen if as_iter else list(gen)
 
 
-def flatten (seq, ignore=IGNORED_TYPES):
-    """deep-flat `seq` yielding items (using list)."""
+def flatten (seq: Sequence, ignore: Sequence[Type] =IGNORED_TYPES) -> Iterable:
+    """Deep-flat $seq (using list) yielding each item.
+    $ignore must be a type or a tuple of types to ignore while flattering."""
     d = list(seq)
     while d:
         s = d.pop(0)
@@ -143,8 +161,9 @@ def flatten (seq, ignore=IGNORED_TYPES):
         else:
             yield s
 
-def iflatten (seq, ignore=IGNORED_TYPES):
-    """deep-flat using list. Works with infinite sequences."""
+def iflatten (seq: Sequence, ignore: Sequence[Type] =IGNORED_TYPES) -> Iterable:
+    """Deep-flat $seq, using deque. Works with infinite sequences.
+    $ignore must be a type or a tuple of types to ignore while flattering."""
     d = deque((iter(seq),))
     while d:
         x = d[0]
@@ -167,6 +186,46 @@ def iflatten (seq, ignore=IGNORED_TYPES):
         else:
             d.popleft()
 
+def diflatten (seq: Sequence,
+               ignore: Sequence[Type] =IGNORED_TYPES,
+               maxdepth: Union[int,float] =float('+inf')) -> Iterable:
+    """Deep-flat $seq using deque. Works with infinite sequences.
+    $ignore must be a type object, or a tuple of types,
+    which will not be flattered.
+    $maxdepth should be a positive number of the maximum level
+    of nesting to flat (default to +inf).
+    >>> lst = [0,0,[1,1,[2,2,[3,3,[4,4,[5,5,[6,6]]]]]]]
+    >>> list(diflatten(lst))
+    [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]
+    >>> list(diflatten(lst, maxdepth=1))
+    [0, 0, 1, 1, [2, 2, [3, 3, [4, 4, [5, 5, [6, 6]]]]]]
+    >>> list(diflatten(lst, maxdepth=2))
+    [0, 0, 1, 1, 2, 2, [3, 3, [4, 4, [5, 5, [6, 6]]]]]
+    """
+    d = deque((zip(itertools.repeat(0), iter(seq)),))
+    deep = 0
+    while d:
+        x = d[0]
+        for deep, item in x:
+            skip_ignored = isinstance(item, ignore)
+            if deep >= maxdepth:
+                yield item
+            elif isinstance(item, NESTED_TYPES):
+                if isinstance(item, REC_TYPES):
+                    if skip_ignored:
+                        yield item
+                    else:
+                        for i in item:
+                            yield i
+                elif skip_ignored:
+                    yield item
+                else:
+                    d.appendleft(zip(itertools.repeat(deep+1), iter(item)))
+                    break
+            else:
+                yield item
+        else:
+            d.popleft()
 
 ##################################
 # OTHERS FLATTEN IMPLEMENTATIONS #
@@ -283,7 +342,7 @@ def _test_out():
                  ([1,[2,3,(4,[],5,6,[[[],[]],7,8,9])]], list(range(1,10)))
     ]
     for input, output in inout_map:
-        for f in (flatten, dflatten, iflatten):
+        for f in (flatten, dflatten, iflatten, diflatten):
             fout = list(f(input))
             assert fout == output, f'[FAIL]: {f.__name__}: out: {fout} != {output}'
     lst = mklst_to_depth(10)
@@ -291,7 +350,7 @@ def _test_out():
         assert f(lst) == list(f(lst, as_iter=True)), f'[FAIL]: {f.__name__}: as_iter=True'
     _in, _out, _out_ig_str, _out_ig_lst = (
         [1, 2,'foo', 3, [1]], [1, 2,'f','o','o', 3, 1], [1, 2,'foo', 3, 1], [1, 2,'foo', 3, [1]])
-    for f in (flatten, dflatten, iflatten):
+    for f in (flatten, dflatten, iflatten, diflatten):
         fout = list(f(_in))
         assert fout  == _out, f'[FAIL]: {f.__name__}: {fout} |= {_out}'
         fout = list(f(_in, ignore=REC_TYPES))
@@ -300,9 +359,22 @@ def _test_out():
         assert fout == _out_ig_lst, f'[FAIL]: {f.__name__}: {fout} != {_out_ig_lst}'
     # test with iterators
     i_out = [1, 2, 3, 4, 5, 6, 'f', 'o', 'o', 7, 1, 2, 3, 11, 12, 22, 24, 8, (11, 11), 9]
-    for f in (flatten, dflatten, iflatten):
+    for f in (flatten, dflatten, iflatten, diflatten):
         out  =list(f([1,2,3,[4,5,[6,'foo',7,[1,2,3],iter([11,12,[22,24]]),8,(11,11),9]]], ignore=(tuple,)))
         assert out == i_out, f'[FAIL]: {f.__name__}: {out} != {i_out}'
+    # test diflatten maxdepth
+    d_in = [0,[1,[2,[3,[4,[5,'foo',(11,12),[6,[],[7,7,7]]]]]]]]
+    d_out = [
+        [0,[1,[2,[3,[4,[5,'foo',(11,12),[6,[],[7,7,7]]]]]]]],
+        [0,1,[2,[3,[4,[5,'foo',(11,12),[6,[],[7,7,7]]]]]]],
+        [0,1,2,[3,[4,[5,'foo',(11,12),[6,[],[7,7,7]]]]]],
+        [0,1,2,3,[4,[5,'foo',(11,12),[6,[],[7,7,7]]]]],
+        [0,1,2,3,4,[5,'foo',(11,12),[6,[],[7,7,7]]]],
+        [0,1,2,3,4,5,'foo',(11,12),[6,[],[7,7,7]]],
+    ]
+    assert list(iflatten(d_in)) == list(diflatten(d_in)), f'[FAIL] diflatten: with depth +inf'
+    for depth, lst in enumerate(d_out):
+        assert list(diflatten(d_in, maxdepth=depth)) == lst, f'[FAIL] diflatten: with depth {depth}'
     print('assert out: OK')
 
 def _test_inf(time_max=10):
@@ -322,7 +394,7 @@ def _test_inf(time_max=10):
 def _test_eq(depth=1000):
     print('*** Test eq:')
     l = mklst_to_depth(depth)
-    funcs = (flatten, iflatten, dflatten)
+    funcs = (flatten, iflatten, dflatten, diflatten)
     funcs_o = (flatten_cglacet,)
     # test these too, with proper (short) input
     funcs_argh = []
@@ -359,6 +431,8 @@ def _test_times(depth=1000, repeats=100):
     print(_report.format('flatten:', t/r))
     t = timeit.Timer('dflatten(l)', 'from __main__ import dflatten', globals=locals()).timeit(r)
     print(_report.format('dflatten:', t/r))
+    t = timeit.Timer('list(diflatten(l))', 'from __main__ import diflatten', globals=locals()).timeit(r)
+    print(_report.format('diflatten:', t/r))
     #################################
     t = timeit.Timer('flatten_cglacet(l)', 'from __main__ import flatten_cglacet', globals=locals()).timeit(r)
     print(_report.format('flatten_cglacet:', t/r))
@@ -370,8 +444,6 @@ def _test_times(depth=1000, repeats=100):
         _test_matp(l, r, _report)
     if HAVE_MORE:
         _test_moreit(l, r, _report)
-    return
-
     ### Summary of unsuccessfully tests:
     # print(l)                    # RecursionError  ( ^L^ )
     # pandas.core.common.flatten  # RecursionError
@@ -450,7 +522,7 @@ crap0101@orange:~/test$ python3 deepflatten.py
 assert out: OK
 (Cntr-C to stop) Deep level: 783153
 *** Test eq:
-assert eq: OK (flatten,iflatten,dflatten)
+assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
@@ -468,7 +540,7 @@ crap0101@orange:~/test$ python3 deepflatten.py  -R 10 -d 500 # let failing funct
 assert out: OK
 (Cntr-C to stop) Deep level: 122060^C
 *** Test eq:
-assert eq: OK (flatten,iflatten,dflatten)
+assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (pandas.core.common.flatten,matplotlib.cbook.flatten,more_itertools.more.collapse)
 ******************************
@@ -490,7 +562,7 @@ crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py
 assert out: OK
 (Cntr-C to stop) Deep level: 111060^C
 *** Test eq:
-assert eq: OK (flatten,iflatten,dflatten)
+assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (iteration_utilities.deepflatten)
 ******************************
@@ -506,7 +578,7 @@ crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 -d 990 # let fa
 assert out: OK
 (Cntr-C to stop) Deep level: 102050^C
 *** Test eq:
-assert eq: OK (flatten,iflatten,dflatten)
+assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
 assert eq: OK (iteration_utilities.deepflatten)
 ******************************
