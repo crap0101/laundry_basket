@@ -203,12 +203,12 @@ def diflatten (seq: Sequence,
     [0, 0, 1, 1, 2, 2, [3, 3, [4, 4, [5, 5, [6, 6]]]]]
     """
     d = deque((zip(itertools.repeat(0), iter(seq)),))
-    deep = 0
+    depth = 0
     while d:
         x = d[0]
-        for deep, item in x:
+        for depth, item in x:
             skip_ignored = isinstance(item, ignore)
-            if deep >= maxdepth:
+            if depth >= maxdepth:
                 yield item
             elif isinstance(item, NESTED_TYPES):
                 if isinstance(item, REC_TYPES):
@@ -220,7 +220,7 @@ def diflatten (seq: Sequence,
                 elif skip_ignored:
                     yield item
                 else:
-                    d.appendleft(zip(itertools.repeat(deep+1), iter(item)))
+                    d.appendleft(zip(itertools.repeat(depth+1), iter(item)))
                     break
             else:
                 yield item
@@ -381,10 +381,10 @@ def _test_inf(time_max=10):
     import time
     t = time.time()
     try:
-        deep = 0
+        depth = 0
         for i in iflatten(itertools.cycle([1])):
-            print('\r(Cntr-C to stop) Deep level: {}'.format(deep), end='')
-            deep += 1
+            print('\r(Cntr-C to stop) Depth level: {}'.format(depth), end='')
+            depth += 1
             if (time.time() - t) > time_max:
                 break
     except KeyboardInterrupt:
@@ -520,7 +520,7 @@ if __name__ == '__main__':
 crap0101@orange:~/test$ python3 deepflatten.py 
 *** Test output:
 assert out: OK
-(Cntr-C to stop) Deep level: 783153
+(Cntr-C to stop) Depth level: 783153
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
@@ -538,7 +538,7 @@ flatten_cglacet:   0.0421s
 crap0101@orange:~/test$ python3 deepflatten.py  -R 10 -d 500 # let failing functions to terminate
 *** Test output:
 assert out: OK
-(Cntr-C to stop) Deep level: 122060^C
+(Cntr-C to stop) Depth level: 122060^C
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
@@ -560,7 +560,7 @@ collapse:          0.1617s
 crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py
 *** Test output:
 assert out: OK
-(Cntr-C to stop) Deep level: 111060^C
+(Cntr-C to stop) Depth level: 111060^C
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
@@ -576,7 +576,7 @@ flatten_cglacet:   0.0411s
 crap0101@orange:~/test$ ./PY3ENV/bin/python deepflatten.py -R 10 -d 990 # let failing functions to terminate
 *** Test output:
 assert out: OK
-(Cntr-C to stop) Deep level: 102050^C
+(Cntr-C to stop) Depth level: 102050^C
 *** Test eq:
 assert eq: OK (flatten,iflatten,dflatten,diflatten)
 assert eq: OK (flatten_cglacet)
