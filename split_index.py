@@ -78,7 +78,7 @@ if __name__ == '__main__':
     if sys.argv[1:] and sys.argv[1] == '-t':
         _test()
 
-        
+
 """
 crap0101@orange:~/test$ python3 split_index.py -t
 *** Example:
@@ -91,4 +91,15 @@ indexes: [3, 5, 7, 9, 15]
 [10, 11, 12, 13, 14, 15]
 [16, 17, 18, 19]
 *** Test splitting: OK
+"""
+
+""" # note: numpy.array_split splits before the given index
+>>> import numpy as np
+>>> r = 100
+>>> inarr = range(1000000)
+>>> idx = list(range(1,1000000, 10))
+>>> timeit.Timer(stmt='list(split_at(inarr, idx))', setup='from __main__ import split_at, np', globals=locals()).timeit(r) / r
+0.398804909074679
+>>> timeit.Timer(stmt='list(np.array_split(inarr, idx))', setup='from __main__ import split_at, np', globals=locals()).timeit(r) / r
+0.5443526016920806
 """
