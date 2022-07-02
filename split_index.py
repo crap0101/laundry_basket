@@ -2,13 +2,16 @@
 # Cfr. https://forum.ubuntu-it.org/viewtopic.php?f=33&t=649821
 
 import itertools
+import operator
 from typing import Iterator, List, Sequence
 
 fakelist = range(20)
 indexes = [3,5,7,9,15]
 
-def split_at (seq: Sequence, indexes: Sequence[int]) -> Iterator[List]:
+def split_at (seq: Sequence, indexes: Sequence[int], where='after') -> Iterator[List]:
     """Yields Lists splitting $seq at the given $indexes.
+    $where must be 'at' which split like normal python slicing list[a:where]
+    or 'after' (default) splitting *after* the given index.
     >>> list(split_at(range(18), [2,4,8,15]))
     [[0, 1, 2], [3, 4], [5, 6, 7, 8], [9, 10, 11, 12, 13, 14, 15], [16, 17]]
     >>> list(split_at(range(7), [2,4,8,15]))
@@ -21,28 +24,33 @@ def split_at (seq: Sequence, indexes: Sequence[int]) -> Iterator[List]:
     [[0], [1, 2, 3, 4], [5, 6], [7, 8]]
     >>> list(split_at(range(17), [2,4,-8,15]))
     [[0, 1, 2], [3, 4], [5], [6, 7, 8, 9, 10, 11, 12, 13, 14, 15], [16]]
+    >>> list(split_at(range(10), range(0, 10, 2)))
+    [[0], [1, 2], [3, 4], [5, 6], [7, 8], [9]]
+    >>> list(split_at(range(10), range(0, 10, 2), where='at'))
+    [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9]]
     """
+    if where == 'after':
+        compare = operator.gt
+    elif where == 'at':
+        compare = operator.ge
+    else:
+        raise ValueError(f'wrong value for "where": "{where}"')
     def keyfunc (lst):
-        def _next(seq):
-            try:
-                return next(seq)
-            except StopIteration:
-                return float('+inf')
         iter_lst = iter(lst)
-        item = _next(iter_lst)
+        item = next(iter_lst, float('+inf'))
         call_count = itertools.count()
         def aux (value):
             nonlocal item
             idx = next(call_count)
-            if idx > item:
-                item = _next(iter_lst)
+            if compare(idx, item):
+                item = next(iter_lst, float('+inf'))
             return item
         return aux
     for _, islice in itertools.groupby(seq, key=keyfunc(indexes)):
         yield list(islice)
 
-def _test():
-    from random import randint as r
+
+def _example():
     fakelist = range(20)
     indexes = [3,5,7,9,15]
     print('*** Example:')
@@ -50,6 +58,10 @@ def _test():
     print('indexes:', indexes)
     for lst in split_at(fakelist, indexes):
         print(lst)
+
+def _test():
+    from random import randint as r
+    _example()
     print('*** Test splitting: ', end='')
     for _ in range(100):
         pieces = list(filter(None, [list(range(1, r(1,30)))
@@ -75,7 +87,12 @@ def _test():
 
 if __name__ == '__main__':
     import sys
-    if sys.argv[1:] and sys.argv[1] == '-t':
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('-t', '--test', dest='test', action='store_true',
+                 help='Run tests.')
+    args = p.parse_args()
+    if args.test:
         _test()
 
 
