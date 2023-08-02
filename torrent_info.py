@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright (C) 2012  Marco Chieppa (aka crap0101)
 
@@ -24,97 +24,101 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from __future__ import print_function
 import argparse
-from collections import Mapping, MutableSequence
-import platform
+from collections.abc import Mapping, MutableSequence
 import sys
-if platform.python_version_tuple()[0] < '3':
-    input = raw_input
 
 # external import
-import bencode
+try:
+    import bencode
+except ImportError:
+    import fastbencode as bencode
 
-_VERSION = '0.3'
+_VERSION = '0.4'
 
-def flatlist (seq):
-    res = []
-    for s in seq:
-        if isinstance(s, MutableSequence):
-            res.extend(flatlist(s))
+def print_info (seq, separator):
+    for k, v in seq:
+        if isinstance(v, bytes):
+            v = v.decode('utf-8')
+        print(k.decode('utf-8'), separator, v, sep='')
+
+def get_data (file):
+    with open(file, 'rb') as f:
+        return bencode.bdecode(f.read())
+
+def get_info (mapping, show_pieces=False):
+    seq_info = []
+    for k, v in mapping.items():
+        if isinstance(v, Mapping):
+            seq_info.extend(get_info(v))
         else:
-            res.append(s)
-    return res
-
-def main(file, attrs=(), interactive=False, eprint=False, show_pieces=False):
-    if eprint and not interactive:
-        def _print(k,v,sep):
-            if isinstance(v, MutableSequence):
-                for el in flatlist(v):
-                    print(el)
+            if not show_pieces and k == b'pieces':
+                pass
             else:
-                print(v)
+                seq_info.append((k,v))
+    return seq_info
+
+def main(file, attrs=(),
+         available=False, print_list=False, show_pieces=False,
+         sep='', bare=False, ignore_err=False):
+    attrs = tuple(bytes(a, 'utf-8') for a in attrs)
+    info = get_info(get_data(file), show_pieces)
+    if available:
+        print_info([(k, '') for k,v in info], '')
+    elif print_list:
+        print_info(info, sep)
     else:
-        def _print(*a, **k):
-            print(*a, **k)
-    with open(file, 'rb') as file:
-        meta = bencode.bdecode(file.read())
-    if attrs:
+        info = dict(info)
         for attr in attrs:
-            _print(attr, meta[attr], sep=': ')
-        return
-    if interactive:
-        print(meta.keys())
-    for key in meta:
-        info = meta[key]
-        while True:
-            try:
-                if interactive:
-                    if isinstance(info, Mapping):
-                        print(key, list(info.keys()))
-                        choice = input("choice: ").encode('utf-8')
-                        print(info.get(choice,
-                                       "{0}: invalid key".format(choice)))
-                    else:
-                        print(key, meta[key], sep=': ')
-                        break
+            v = info.get(attr, None)
+            if v is None:
+                if not ignore_err:
+                    raise KeyError(attr)
                 else:
-                    if isinstance(info, Mapping):
-                        if not show_pieces:
-                            info.pop('pieces', None)
-                        for k, v in info.items():
-                            _print(k, v, sep=': ')
-                    else:
-                        _print(key, meta[key], sep=': ')
-                    break
-            except KeyboardInterrupt as e:
-                print()
-                break
+                    v = b'N.A.'
+            if bare:
+                attr = b''
+                sep = ''
+            print_info([(attr,v)], sep)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Show torrent info.')
     parser.add_argument('files', nargs='+',
                         metavar='FILE', help='torrent files.')
-    parser.add_argument('-a', '--attributes', dest='attrs', nargs='+',
-                        metavar='ATTR', help="Show only this torrent's"
-                        ' attributes and exit. Conflicts with'
-                        ' the -i/--interactive option')
-    parser.add_argument('-i', '--interactive', action='store_true',
-                        dest='i', help='interactive mode, browse torrent'
-                        ' attributes, if available. Conflicts with the'
-                        ' -a/--attributes option')
-    parser.add_argument('-l', '--print-list',
-                        dest='l', action='store_true',
-                        help='in non-interactive mode print in format'
-                        ' suitable for easy parsing (a sort of)')
+    parser.add_argument('-b', '--bare',
+                        dest='bare', action='store_true',
+                        help='within -a, print only the value of the'
+                        ' choosen attributes, in command-line order,'
+                        ' one per line.')
+    parser.add_argument('-i', '--ignore-attrs-err',
+                        dest='ignore', action='store_true',
+                        help='within -a, ignore errors for non-available'
+                        ' choosen attributes')
     parser.add_argument('-p', '--show-pieces', action='store_true',
-                        dest='p', help='show torrent pieces. Since this'
+                        dest='pieces', help='show torrent pieces. Since this'
                         ' attribute is not human-readable by default'
                         ' is not displayed, use this option to see them')
+    parser.add_argument('-s', '--separator',
+                        dest='separator', default=' --> ',
+                        help='string separator between'
+                        ' key and value, default "%(default)s"')
     parser.add_argument('-v', '--version', action='version', version=_VERSION)
+    mgroup = parser.add_mutually_exclusive_group(required=True)
+    mgroup.add_argument('-a', '--attributes', dest='attrs', nargs='+',
+                        default=(),
+                        metavar='ATTR', help="Show only the choosen torrent's"
+                        ' attributes.')
+    mgroup.add_argument('-A', '--available',
+                        dest='available', action='store_true',
+                        help='Show, one per line, the available attributes.')
+
+    mgroup.add_argument('-l', '--print-list',
+                        dest='list', action='store_true',
+                        help='list all key/value attribute pairs.')
     parsed = parser.parse_args()
-    if parsed.attrs and parsed.i:
-        parser.error('options conflict: -a and -i used together')
     for file in parsed.files:
-        main(file, parsed.attrs, parsed.i, parsed.l, parsed.p)
+        main(file, parsed.attrs,
+             parsed.available, parsed.list, parsed.pieces,
+             parsed.separator, parsed.bare, parsed.ignore)
+
