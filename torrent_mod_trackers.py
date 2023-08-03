@@ -128,6 +128,8 @@ if __name__ == '__main__':
     backup = bytes(args.backup, ENC)
     trackers = list(bytes(t, ENC) for t in args.trackers)
     if args.announce_tracker != None:
+        if args.remove:
+            p.error('-A and -r used together!')
         atracker = bytes(args.announce_tracker, ENC)
     else:
         atracker = args.announce_tracker
