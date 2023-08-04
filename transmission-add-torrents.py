@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import getpass
@@ -22,7 +22,7 @@ def get_args (args=None):
     p.add_argument('-P', '--port',
                    dest='port', type=int, default=9091,
                    help='Transmission RPC port (default: %(default)s)')
-    p.add_argument('-u', '-user',
+    p.add_argument('-u', '--user',
                    dest='user', default=None, help='user name')
     pg = p.add_mutually_exclusive_group()
     pg.add_argument('-p', '--pswd',
@@ -62,4 +62,4 @@ if __name__ == '__main__':
     if fail: #TODO: add log(s)
         prog = os.path.basename(sys.argv[0])
         for msg in fail:
-            print "{}: {} <{}>".format(prog, *msg)
+            print("{}: {} <{}>".format(prog, *msg))

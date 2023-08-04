@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # written by: Marco Chieppa (aka crap0101, 2016-05-09)
 #
@@ -49,8 +49,8 @@ def show (torrents, regex):
             if reg.match(t['scrape']):
                 trackers_to_remove.add(t['scrape'])
         if trackers_to_remove:
-            print "remove from <{}> matches: <{}>".format(
-                torrent.name, list(trackers_to_remove))
+            print("remove from <{}> matches: <{}>".format(
+                torrent.name, list(trackers_to_remove)))
 
 def remove (torrents, regex):
     reg = re.compile(regex)
@@ -63,6 +63,7 @@ def remove (torrents, regex):
             client.change_torrent(torrent.id, trackerRemove=trackers_to_remove)
 
 if __name__ == '__main__':
+    #XXX+TODO: show some more info
     parser, args = get_args()
     if not args.no_pswd and not args.pswd:
         if args.user is None:
