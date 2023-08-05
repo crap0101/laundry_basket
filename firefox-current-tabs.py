@@ -1,45 +1,58 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
-from __future__ import print_function
 import argparse
 import glob
 import json
 import os
+#
+import lz4.block
 
 BROWSERS = ('firefox', 'iceweasel', 'abrowser')
 DEFAULT_BROWSER = 'firefox'
-#TODO: recovery.jsonlz4 and lz4 handling :-(
-SUBPATHS = {'old': '*.default/sessionstore.js',
-                 'new': '*.default/sessionstore-backups/recovery.js'}
-PATH_FMT = '~/.mozilla/{browser}/{subpath}'
+#TODO: check those paths
+SUBPATH = '*.default/sessionstore-backups/recovery.jsonlz4'
+BASEPATH = {'clean': '~/.mozilla/{browser}/{subpath}',
+            'snap':'~/snap/firefox/common/.mozilla/{browser}/{subpath}'}
+DESCRIPTION='''List open urls in current(s) browser session.'''
 
 def get_args (args=None):
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description=DESCRIPTION)
     p.add_argument('-b', '--browser',
                    dest='browser', default=DEFAULT_BROWSER,
-                   choices=BROWSERS, help='browser name')
+                   choices=BROWSERS, help='browser name.')
+    p.add_argument('-d', '--no-decompress',
+                   dest='no_decompress', action='store_true',
+                   help="if config file is an (old) plain text file.")
+    p.add_argument('-p', '--basepath',
+                   dest='basepath', choices=(BASEPATH.keys()),
+                   default='snap', help="browser's session basepath location.")
     p.add_argument('-s', '--subpath',
-                   dest='subpath', choices=(SUBPATHS.keys()),
-                   default='new', help="browser's session path location")
+                   dest='subpath', default=SUBPATH,
+                   help="browser's session file path location: (%(default)s).")
     return p.parse_args(args)
 
-def current_tabs_url (path):
-    with open(path) as f:
-        data = json.loads(f.read())
-        windows = data['windows']
-        for win in windows:
-            for tab in win['tabs']:
-                yield tab['entries'][-1]['url']
-#            for entry in tab['entries']:
-#                print(entry['url'])
+def current_tabs_url (path, decompress):
+    if decompress:
+        with open(path, 'rb') as f:
+            f.read(8) # skip magic
+            data = json.loads(lz4.block.decompress(f.read()))
+    else:
+        with open(path) as f:
+            data = json.loads(f.read())
+    windows = data['windows']
+    for win in windows:
+        for tab in win['tabs']:
+            yield tab['entries'][-1]['url']
+
 
 if __name__ == '__main__':
     args = get_args()
-    session_file = PATH_FMT.format(
-        browser=args.browser, subpath=SUBPATHS[args.subpath])
+    path_fmt = BASEPATH[args.basepath]
+    session_file = path_fmt.format(
+        browser=args.browser, subpath=args.subpath)
     try:
         path = glob.glob(os.path.expanduser(session_file))[0]
     except IndexError:
         raise OSError("can't find {}".format(os.path.expanduser(session_file)))
-    for url in current_tabs_url(path):
+    for url in current_tabs_url(path, not args.no_decompress):
         print(url)
