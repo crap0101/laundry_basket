@@ -19,21 +19,7 @@ class CpuStat:
     @property
     def total_time (self):
         return self.user + self.nice + self.system + self.idle
-"""
-       /proc/uptime
-              This file contains two numbers (values in seconds): the
-              uptime of the system (including time spent in suspend) and
-              the amount of time spent in the idle process.
 
-https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/deployment_guide/s2-proc-uptime
-
-       /proc/stat
-           idle   (4) Time spent in the idle task.  This value
-                      should be USER_HZ times the second entry in
-                      the /proc/uptime pseudo-file.
->>> #idle = user_hz * idletime
->>> #user_hz=idle/idletime
-"""
 _debug = 1
 
 def get_times():
@@ -68,9 +54,6 @@ def get_cpu():
                 else:
                     p.number = int(groups[0])
                 _cpu_s.append(p)
-                #_v = line.split()[1:5]
-                #user, nice, system, idle = (float(x.strip()) for x in _v)
-                #break
     if not _cpu_s:
         raise Exception('error reading {stats.name}: no cpu info? :-(')
     return _cpu_s
@@ -83,7 +66,7 @@ if __name__ == '__main__':
 
     main_c = list(c for c in cpu_s if c.main)[0]
     USER_HZ = main_c.idle/idletime
-    main_c_sec = CpuStat(*(v/USER_HZ for v in main_c.times)) #(user,nice,system,idle)))
+    main_c_sec = CpuStat(*(v/USER_HZ for v in main_c.times))
     main_c_sec.main = True
 
     #_debug = 0
@@ -111,29 +94,15 @@ if __name__ == '__main__':
             for oc, c in zip(old_cpu_s, cpu_s):
                 assert c.name == oc.name
                 assert c.__hash__() != oc.__hash__()
-                ###change...
-                #new = c.total_time - c.idle
-                #old = oc.total_time - oc.idle
-                #old_p = ((c.total_time-c.idle)*100)/c.total_time
-                #change_p = ((new / old) * 100) - 100
-                #print("{}: {:.6f}%".format(c.name, old_p+change_p))
+                #change...
+                if debug:
+                    new = c.total_time - c.idle
+                    old = oc.total_time - oc.idle
+                    old_p = ((c.total_time-c.idle)*100)/c.total_time
+                    change_p = ((new / old) * 100) - 100
+                    print("* change: {}: {:.6f}%".format(c.name, old_p+change_p))
                 print(_fmt.format(f'{c.name}:', (((c.total_time - oc.total_time) - (c.idle - oc.idle))*100)/(c.total_time - oc.total_time)))
-                #print("{:<3} {:.2f}%".format(f'{c.name}:', (((c.total_time - oc.total_time) - (c.idle - oc.idle))*100)/(c.total_time - oc.total_time)))
-                #  +###((c.total_time-c.idle)*100)/c.total_time
-                #except ZeroDivisionError as e:print(c.name, "ERRRRRR:", (c.total_time - oc.total_time), (c.idle - oc.idle))
     except KeyboardInterrupt:
         print('exiting...')
     except ZeroDivisionError as e:
         print(f'{e}\n>{c}\n>{oc}')
-        
-            
-    #print("cpu: {:.6f}%".format(((sum(main_c_sec.times)-main_c_sec.idle)*100)/sum(main_c_sec.times)))
-    #print("cpu: {:.6f}%".format(((sum(main_c_sec.times)-idletime)*100)/sum(main_c_sec.times))) # test, ok
-
-"""
->>> st
-(439199.97, 1920.4, 111925.4, 6254916.91)
->>> #x : uso = 100 : tot => x = (uso * 100) / tot
->>> ((sum(st)-st[-1])*100)/sum(st)
-8.123513538414397
-"""
