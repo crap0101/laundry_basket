@@ -34,7 +34,7 @@ https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/de
 >>> #idle = user_hz * idletime
 >>> #user_hz=idle/idletime
 """
-_debug = 0
+_debug = 1
 
 def get_times():
     try:
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     main_c_sec = CpuStat(*(v/USER_HZ for v in main_c.times)) #(user,nice,system,idle)))
     main_c_sec.main = True
 
-    _debug = 1
+    #_debug = 0
     if _debug:
         print(f'* uptime: {uptime:.2f} | idletime: {idletime:.2f} \
 | uptime (day): {uptime/86400:.2f} | USER_HZ: {USER_HZ:.2f}')
