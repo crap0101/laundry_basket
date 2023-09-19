@@ -1,8 +1,12 @@
 
 @load "time"
 
-# awk -f thisfile
-# awk -v iter=NUM -f thisfile
+# bare use:
+# $ awk -f thisfile
+# fidex iterations (a positive integer. Default: loop forever):
+# $ awk -v iter=NUM -f thisfile
+# show the main cpu only
+# $ awk -v iter=NUM -v main=1 -f thisfile
 
 function cpuinfo() {
     while (retcode = (getline < STAT_FILE)) {
@@ -19,6 +23,7 @@ function cpuinfo() {
 	    cpu_s[$1]["nice"]["new"] = $3
 	    cpu_s[$1]["system"]["new"] = $4
 	    cpu_s[$1]["idle"]["new"] = $5
+	    cpu_s[$1]["__use"]["new"] = 0
 
 	}
     }
@@ -46,11 +51,23 @@ function calc() {
 			   + cpu_s[cpu]["idle"]["old"])
 	_idle_new = cpu_s[cpu]["idle"]["new"]
 	_idle_old = cpu_s[cpu]["idle"]["old"]
-        printf("%-8s %.2f%%\n",
-               _fmt_name,
-               (((_total_time_new - _total_time_old)       \
-                - (_idle_new - _idle_old)) * 100)          \
-	       / (_total_time_new - _total_time_old))
+        cpu_s[cpu]["__use"]["new"] = sprintf(                 \
+	    "%.2f", \
+	    (((_total_time_new - _total_time_old)	   \
+	      - (_idle_new - _idle_old)) * 100)		   \
+	    / (_total_time_new - _total_time_old))
+    }
+}
+
+function print_calc (main) {
+    if (main) {
+	_fmt_name = cpu_s[main]["name"]["new"] ":"
+	printf("%-8s %s%%\n", _fmt_name, cpu_s[cpu]["__use"]["new"])
+    } else {
+	for (cpu in cpu_s) {
+	    _fmt_name = cpu_s[cpu]["name"]["new"] ":"
+	    printf("%-8s %s%%\n", _fmt_name, cpu_s[cpu]["__use"]["new"])
+	}
     }
 }
 
@@ -66,8 +83,15 @@ BEGIN {
     PROCINFO["sorted_in"] = "@ind_str_asc"
     STAT_FILE = "/proc/stat"
     STDERR = "/dev/stderr"
-    
-    cpuinfo()
+
+    if (!main) {
+	only_main = ""
+    } else if (match(main, /^1$/)) {
+	only_main = "cpu"
+    } else {
+	printf("Invalid value for 'main': <%s>\n", main) > STDERR
+	exit 2
+    }
     if (!iter) {
 	loop = "forever"
 	iter  = 0
@@ -80,11 +104,14 @@ BEGIN {
 	    iter += 0
 	}
     }
+
+    cpuinfo()
     while (@loop(iter)) {
 	move()
 	sleep(0.5)
 	cpuinfo()
 	calc()
+	print_calc(only_main)
 	iter -= 1
 	print("*********")
     }
