@@ -3,10 +3,12 @@
 
 # bare use:
 # $ awk -f thisfile
-# fidex iterations (a positive integer. Default: loop forever):
+# max iterations (a positive integer. Default: loop forever)
 # $ awk -v iter=NUM -f thisfile
 # show the main cpu only
-# $ awk -v iter=NUM -v main=1 -f thisfile
+# $ awk -v main=1 -f thisfile
+# choose sleep time (as seconds, a positive float or integer. Default: 0.5)
+# $ awk -v wait=1.2 -f thisfile
 
 function cpuinfo() {
     while (retcode = (getline < STAT_FILE)) {
@@ -79,26 +81,43 @@ function iter_max(num) {
     return (num <= 0) ? 0 : 1
 }
 
+function die_bad(reason, status) {
+    printf("%s", reason) > STDERR
+    exit status
+}
+
 BEGIN {
     PROCINFO["sorted_in"] = "@ind_str_asc"
     STAT_FILE = "/proc/stat"
     STDERR = "/dev/stderr"
+    sleep_time = 0.5
+
+    if  (!wait && !length(wait)) {
+	# keep default
+    } else if (match(wait, /^[0-9]+(\.[0-9]+)?$/)) {
+	if (wait == 0) {
+	    die_bad(sprintf("Invalid value for 'wait': <%s>\n", wait), 2)
+	} else {
+	    sleep_time = wait + 0
+	}
+    } else {
+	die_bad(sprintf("Invalid value for 'wait': <%s>\n", wait), 2)
+    }
 
     if (!main) {
 	only_main = ""
     } else if (match(main, /^1$/)) {
 	only_main = "cpu"
     } else {
-	printf("Invalid value for 'main': <%s>\n", main) > STDERR
-	exit 2
+	die_bad(sprintf("Invalid value for 'main': <%s>\n", main), 2)
     }
+    
     if (!iter) {
 	loop = "forever"
 	iter  = 0
     } else {
 	if (!match(iter, /^[0-9]+$/)) {
-	    printf("Invalid value for 'iter': <%s>\n", iter) > STDERR
-	    exit 2
+	    die_bad(sprintf("Invalid value for 'iter': <%s>\n", iter), 2)
 	} else {
 	    loop = "iter_max"
 	    iter += 0
@@ -108,7 +127,7 @@ BEGIN {
     cpuinfo()
     while (@loop(iter)) {
 	move()
-	sleep(0.5)
+	sleep(sleep_time)
 	cpuinfo()
 	calc()
 	print_calc(only_main)
