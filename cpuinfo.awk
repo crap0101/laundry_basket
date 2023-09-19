@@ -113,6 +113,8 @@ BEGIN {
 	calc()
 	print_calc(only_main)
 	iter -= 1
-	print("*********")
+	if (iter) {
+	    print("*********")
+	}
     }
 }
