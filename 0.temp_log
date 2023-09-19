@@ -4,7 +4,7 @@
   echo "---- SMARTCTL ----" ;
   for disk in /dev/sd[abc] ; do
     smartctl -a  "$disk" | awk -v disk="$disk" '/^194/ {
-        printf "%s: %d°C\n", disk, $10}' ;
+        printf "%s: %.1f°C\n", disk, $10}' ;
   done ;
   echo "---- SENSORS ----" ;
   /usr/bin/sensors -u | /home/crap0101/local/bin/temperature-filter.awk ;
