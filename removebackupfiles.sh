@@ -3,42 +3,82 @@
 function usage ()
 {
     echo -ne "$0: remove backup file by suffix.
-    USAGE: $0 [-S] [[-s SUFFIX] ...] PATH [PATH ...]
+    USAGE: $0 [[-s SUFFIX] ...] [PATH ...]
     OPTIONS:
-        -s SUFFIX   remove file ending in SUFFIX
+        -d DEPTH    Descend at most levels of directories
+        -s SUFFIX   remove files ending in SUFFIX, (a find\'s findutils
+                    -regex pattern, See \"man 1 find\" for details).
+                    Default to \".*~$\".
+        -v          verbose. Print removed files.
         -h          print this help and exit
-    NOTE: default suffix pattern is '*~'. Use the -S
-          option as *first* to remove this pattern from the list.
+    If no PATH are provided, uses the current directory.
 "
 }
 
 set -o noglob
 shopt -u nullglob
 
-SFX=( '-name *~ -o' )
+SFX=( )
+SFX_DEFAULT=( '-regex ".*~$" -o' )
+DEPTH=""
+VERBOSE=""
+ERRORS=( )
 
-while getopts "Ss:h" arg
+while getopts "d:s:vh" arg
 do
     case $arg in
-	S)
-	    SFX=( );;
+    d)
+        if [ "$OPTARG" -le 0 ]; then
+        echo "option -$arg: invalid argument <$OPTARG>"
+        exit 1
+        fi
+        DEPTH="-maxdepth $OPTARG";;
 	s)
-	    SFX[${#SFX[@]}]="-name $OPTARG -o";;
-        *|h)
-            usage
-            exit 1;;
+	    SFX[${#SFX[@]}]="-regex $OPTARG -o";;
+    v)
+        VERBOSE="-print";;
+    *|h)
+        usage
+        exit 1;;
     esac
 done
 shift $((OPTIND-1))
 
-if [ $# -lt 1 -o ${#SFX[@]} -eq 0 ]; then
-    usage
-    exit 2
+if [ ${#SFX[@]} -eq 0 ]; then
+    SFX="${SFX_DEFAULT[@]}"
+fi
+if [ $# -lt 1 ]; then
+    paths=( . );
+else
+    paths="$@";
 fi
 
 SFX[${#SFX[@]}]="-false"
 
+err_out_file=$(mktemp)
+if [ "$?" -ne 0 ]; then
+    echo "***can't create tempfile, errors on /dev/null"
+    err_out_file=/dev/null
+fi
+
 for path in "$@"
 do
-    find "$path" -type f \( ${SFX[@]} \) -delete
+    find "$path" $DEPTH -type f \( ${SFX[@]} \) -delete $VERBOSE 2>$err_out_file
+    exit_status=$?
+    if [ "$exit_status" -ne 0 ]; then
+    ERRORS[${#ERRORS[@]}]=$exit_status
+    fi
 done
+
+if [ ${#ERRORS[@]} -gt 0 ]; then
+    echo -n "*** some errors occured, find's exits status are:"
+    for err in ${ERRORS[@]}; do
+        echo -n "$err "
+    done
+    echo ""
+    if [ $err_out_file != "/dev/null" ]; then
+        echo "***see errors in $err_out_file"
+    fi
+else
+    rm "$err_out_file"
+fi
