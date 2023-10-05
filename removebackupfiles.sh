@@ -6,7 +6,7 @@ function usage ()
     USAGE: $0 [[-s SUFFIX] ...] [PATH ...]
     OPTIONS:
         -d DEPTH    Descend at most levels of directories
-        -s SUFFIX   remove files ending in SUFFIX, (a find\'s findutils
+        -s SUFFIX   remove files ending in SUFFIX, (a find's findutils
                     -regex pattern, See \"man 1 find\" for details).
                     Default to \".*~$\".
         -v          verbose. Print removed files.
