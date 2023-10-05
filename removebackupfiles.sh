@@ -63,7 +63,6 @@ else
     paths=( $@ );
 fi
 
-#for path in $paths
 for path in "${paths[@]}"; do
     # ${SFX[@]} too complex for expansion :-|
     # ----------↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓---- shit
