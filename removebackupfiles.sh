@@ -47,12 +47,6 @@ shift $((OPTIND-1))
 if [ ${#SFX[@]} -eq 0 ]; then
     SFX="${SFX_DEFAULT[@]}"
 fi
-if [ $# -lt 1 ]; then
-    paths=( . );
-else
-    paths="$@";
-fi
-
 SFX[${#SFX[@]}]="-false"
 
 err_out_file=$(mktemp)
@@ -61,14 +55,25 @@ if [ "$?" -ne 0 ]; then
     err_out_file=/dev/null
 fi
 
-for path in "$@"
-do
-    find "$path" $DEPTH -type f \( ${SFX[@]} \) -delete $VERBOSE 2>$err_out_file
+OLD_IFS=${IFS}
+IFS=""
+if [ $# -lt 1 ]; then
+    paths=( . );
+else
+    paths=( $@ );
+fi
+
+#for path in $paths
+for path in "${paths[@]}"; do
+    # ${SFX[@]} too complex for expansion :-|
+    # ----------↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓---- shit
+    eval find "$(printf \"\"%q\"\" ${path})" $DEPTH "-type f" "\( ${SFX[@]} \)" -delete "$VERBOSE" 2>$err_out_file
     exit_status=$?
     if [ "$exit_status" -ne 0 ]; then
     ERRORS[${#ERRORS[@]}]=$exit_status
     fi
 done
+IFS=${OLD_IFS}
 
 if [ ${#ERRORS[@]} -gt 0 ]; then
     echo -n "*** some errors occured, find's exits status are:"
