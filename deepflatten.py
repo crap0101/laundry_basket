@@ -115,7 +115,7 @@ def dflatten (seq: Sequence,
               as_iter: bool =False) -> Union[Iterable,Sequence]:
     """Deep-flat $seq (using deque).
     $ignore must be a type or a tuple of types to ignore while flattering.
-    If $as_iter is Truem, return an iterable instead of a list."""
+    If $as_iter is True, return an iterable instead of a list."""
     def inner_flat (seq, ignore):
         d = deque(seq)
         while d:
