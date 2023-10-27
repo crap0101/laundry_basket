@@ -43,6 +43,15 @@ function assert_false(condition, must_exit, msg,    ret) {
     return assert_true(! condition, must_exit, msg)
 }
 
+function assert_nothing(condition, must_exit, msg,    ret) {
+    # Returns always true, used only to check $condition.
+    # Appends a string after $msg to signaling the actual evaluation of $condition. 
+    if (! condition)
+	return assert_false(condition, must_exit, msg "(assert nothing: FAILED)")
+    else
+	return assert_true(condition, must_exit, msg "(assert nothing: OK)")
+}
+
 function assert_equal(value1, value2, must_exit, msg,    ret) {
     # Check if $value1 == $values, exits with $must_exit
     # if the test fails.
