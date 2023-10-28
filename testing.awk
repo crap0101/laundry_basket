@@ -7,6 +7,7 @@ BEGIN {
     MSG_FALSE = "FAIL"
     REPORT["ok_tests_count"] = 0
     REPORT["fail_tests_count"] = 0
+    REPORT["ignored_tests_count"] = 0
     REPORT["running"] = 0
 }
 
@@ -44,12 +45,16 @@ function assert_false(condition, must_exit, msg,    ret) {
 }
 
 function assert_nothing(condition, must_exit, msg,    ret) {
-    # Returns always true, used only to check $condition.
+    # Special assert function. Returns always true, used only to check $condition.
     # Appends a string after $msg to signaling the actual evaluation of $condition. 
+    # $must_exit has no means here, but still usable.
+    assert_true(condition, must_exit, msg " [ignored: assert_nothing]")
     if (! condition)
-	return assert_false(condition, must_exit, msg "(assert nothing: FAILED)")
+	REPORT["fail_tests_count"] -= 1
     else
-	return assert_true(condition, must_exit, msg "(assert nothing: OK)")
+	REPORT["ok_tests_count"] -= 1
+    REPORT["ignored_tests_count"] += 1
+    return 1
 }
 
 function assert_equal(value1, value2, must_exit, msg,    ret) {
@@ -84,6 +89,7 @@ function message(condition, msg) {
 function start_test_report() {
     REPORT["ok_tests_count"] = 0
     REPORT["fail_tests_count"] = 0
+    REPORT["ignored_tests_count"] = 0
     REPORT["running"] = 1
 }
 
@@ -97,8 +103,10 @@ function report() {
     printf ("===== TESTS REPORT =====\n" \
 	    "total tests:      %3d\n" \
 	    "successful tests: %3d\n" \
-	    "failed tests:     %3d\n",
-	    REPORT["ok_tests_count"] + REPORT["fail_tests_count"],
+	    "failed tests:     %3d\n" \
+	    "ignored tests:    %3d\n",
+	    REPORT["ok_tests_count"] + REPORT["fail_tests_count"] + REPORT["ignored_tests_count"],
 	    REPORT["ok_tests_count"],
-	    REPORT["fail_tests_count"]) > "/dev/stderr"
+	    REPORT["fail_tests_count"],
+	    REPORT["ignored_tests_count"]) > "/dev/stderr"
 }
