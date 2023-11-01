@@ -28,7 +28,7 @@ function assert_true(condition, must_exit, msg,    ret) {
 	if (msg)
 	    message(ret, msg)
 	if (must_exit && GLOBAL_MUST_EXIT)
-	    exit(must_exit)
+	    exit(must_exit && GLOBAL_MUST_EXIT)
     } else {
 	REPORT["ok_tests_count"] += ret = 1
 	if (msg)
