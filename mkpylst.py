@@ -200,8 +200,6 @@ def write_playlist (paths :Sequence[Path_t], outpath :Path_t, relative :bool):
             p.write("#EXTM3U\n\n")
             for track in sorted(paths):
                 length = get_length(track)
-                #TODO aggiungere opzione per scrivere la lunghezza del file (in secondi)
-                # (per quelli in cui si riesce a leggere) oppure lasciare -1
                 p.write(f"#EXTINF:{length},{track.stem}\n") 
                 p.write(f"{track.name}\n\n" if relative else f"{str(track)}\n\n")
     else:
