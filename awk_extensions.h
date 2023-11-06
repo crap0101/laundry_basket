@@ -12,10 +12,14 @@
  #define _PATHSEP "/"
 #endif
 
-#define __module__ "gawk extension"
+#ifndef __module__
+ #define __module__ "gawk extension"
+#endif
 #define eprint(fmt, ...) fprintf(stderr, __msg_prologue fmt, __module__, __func__, ##__VA_ARGS__)
-#define _DEBUGLVL 0
-#if (_DEBUGLVL)
+#ifndef _DEBUGLEVEL
+ #define _DEBUGLEVEL 0
+#endif
+#if (_DEBUGLEVEL)
 #define dprint eprint
 #define __msg_prologue "Debug: %s @%s: "
 #else
