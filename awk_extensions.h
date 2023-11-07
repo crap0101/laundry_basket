@@ -94,7 +94,7 @@ Bool rand_init(rand_init_t how, ...) {
     if (t == -1)
       return False;
     seed = (unsigned int) t;
-      break;
+    break;
   case USE_CLOCK:
     seed = clock();
     break;
@@ -122,6 +122,7 @@ String rand_name(String prefix) {
    * (String creation, the call to rand_init, ...).
    */
   if (! __RAND_INIT_CALLED) {
+    dprint("RAND_INIT: first call");
     if (! rand_init(USE_TIME)) {
       eprint("rand_init() failed");
       return NULL;
