@@ -5,6 +5,7 @@
 #define _AWK_EXTENSIONS
 #endif
 
+/* headers used here: not re-include  */
 #ifndef _STDIO_H
  #include <stdio.h>
 #endif
