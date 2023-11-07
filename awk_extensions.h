@@ -1,19 +1,23 @@
 
 /* Some dec/utilities for gawk extensions */
 
-#ifndef snprintf
+#ifndef _AWK_EXTENSIONS
+#define _AWK_EXTENSIONS
+#endif
+
+#ifndef _STDIO_H
  #include <stdio.h>
 #endif
-#ifndef time
+#ifndef _TIME_H
  #include <time.h>
 #endif
-#ifndef va_start
+#ifndef _STDARG_H
  #include <stdarg.h>
 #endif
-#ifndef random
+#ifndef _SYS_RANDOM_H
  #include <stdlib.h>
 #endif
-#ifndef strlen
+#ifndef _STRING_H
  #include <string.h>
 #endif
 
