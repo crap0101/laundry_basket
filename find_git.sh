@@ -2,6 +2,7 @@
 
 LIST_ONLY=0
 DIRNAME=0
+CHANGED=0
 
 function help () {
     echo "$1: find git repositories in one or more paths
@@ -10,8 +11,11 @@ function help () {
   POSITIONAL ARGUMENTS:
     paths    paths in which search for git. Default to \$PWD 
   OPTIONAL ARGUMENTS:
-    -l  list only (doesn't display repo status)
-    -b  print only git's dirname
+    -b  print only git's dirname.
+    -c  print only repos changed from the last push.
+    -l  list only (doesn't display status).
+
+  Options -blc can be combined to tune output.
 "
 }
 
@@ -19,12 +23,14 @@ function find_git () {
     find "$1" -type d -name '.git' -prune
 }
 
-while getopts "hlbe:" arg
+while getopts "hlcbe:" arg
 do
     case $arg in
 	b) DIRNAME=1
-	    ;;
-	e) CMD="$OPTARG"
+	   ;;
+	c) CHANGED=1
+	   ;;
+	e) CMD="$OPTARG" # currently unused
 	    ;;
         l)  LIST_ONLY=1
             ;;
@@ -37,38 +43,41 @@ shift $(($OPTIND - 1))
 
 if [ $DIRNAME -eq 1 ]
 then
-    function _print () {
-	basename "$(dirname "$1")"
+    function _getd () {
+	basename "$(dirname \"$1\")"
     }
 else
-    function _print () {
-	echo "$1"
+    function _getd () {
+	dirname "$1"
 }
 fi
 
-if [ $LIST_ONLY -eq 1 ]
-then
-    function print_out () {
-	while read dir_name
-	do
-	    _print $dir_name
-	done
-    }
-else
-    function print_out () {
-	while read dir_name
-	do
-	    cd "$(dirname $dir_name)"
-	    if [ -n "$(git status -s)" ]
-            then
-		echo "C: $(_print "$dir_name")"
+
+function print_out () {
+    while read dir_name
+    do
+	cd "$(dirname $dir_name)"
+	if [ -n "$(git status -s)" ]
+        then
+	    if [ $LIST_ONLY -eq 1 ]
+	    then
+		_getd "$dir_name"
 	    else
-		echo "U: $(_print "$dir_name")"
+		echo "C: $(_getd \"$dir_name\")"
 	    fi
-	    cd - &>/dev/null
-	done
+	elif [ $CHANGED -eq 0 ]
+	then
+	    if [ $LIST_ONLY -eq 1 ]
+	    then
+		_getd "$dir_name"
+	    else
+		echo "U: $(_getd \"$dir_name\")"
+	    fi
+	fi
+	cd - &>/dev/null
+    done
 }
-fi
+
 
 if [ $# -gt 0 ]
 then
