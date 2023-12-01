@@ -25,9 +25,9 @@
 
 
 #if defined(__WIN32) || defined(__WIN64)
- #define _PATHSEP "\\"
+const char _PATHSEP[] = "\\";
 #else
- #define _PATHSEP "/"
+const char _PATHSEP[] = "/";
 #endif
 
 #ifndef __module__
