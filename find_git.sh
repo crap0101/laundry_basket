@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# author: Marco Chieppa | crap0101
+#
 
 LIST_ONLY=0
 DIRNAME=0

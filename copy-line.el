@@ -12,7 +12,9 @@
 ;;
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+;;
+;; author: Marco Chieppa | crap0101
+;;
 
 (defun copy-lines (&optional arg)
   "Copy *arg* lines in the kill ring (default: the current line)."

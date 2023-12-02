@@ -1,3 +1,6 @@
+/*
+ * author: Marco Chieppa | crap0101
+ */
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# author: Marco Chieppa | crap0101
+#
 
 REQUIRES="exiftran gawk printf sort pwd cut basename find xargs"
 IMG_PLOT_DIMS=6000,2000

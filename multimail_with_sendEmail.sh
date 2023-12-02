@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#
+# author: Marco Chieppa | crap0101
+#
 # massive mail sender
 
 function usage () {

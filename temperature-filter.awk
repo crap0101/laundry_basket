@@ -3,7 +3,9 @@
 # temperature filter for the output
 # of `sensors -u` with a vanilla sensors.conf
 # (barely works without the -u option).
-# 2023, crap0101
+#
+# author: Marco Chieppa | crap0101
+# 2023
 
 function reset() {
     name = ""

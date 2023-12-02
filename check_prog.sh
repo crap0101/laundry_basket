@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# author: Marco Chieppa | crap0101
+#
 
 if [ $# -lt 1 ]; then
     echo "USAGE: $0 [PROG_NAME ...]"

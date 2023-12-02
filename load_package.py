@@ -1,6 +1,7 @@
 
 # author: Marco Chieppa (aka crap0101)
 # license: public domain
+# NOTE: python2
 
 import imp
 import os

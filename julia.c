@@ -1,7 +1,7 @@
 /*
  * Julia set (v.0.5)
  * compile with: gcc -Wall -Wextra -pedantic julia.c -lm -o j
- *
+ * author: Marco Chieppa | crap0101
  */
 
 #include <getopt.h>

@@ -1,3 +1,8 @@
+#
+# author: Marco Chieppa | crap0101
+#
+
+#NOTE: python2
 
 import sys
 try:

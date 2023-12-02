@@ -3,6 +3,8 @@
  * add command line args
  * compile with: gcc -Wall -Wextra -pedantic mandelbrot.c -lm -o mout
  * 
+ * author: Marco Chieppa | crap0101
+ *
  */
 
 #include <stdio.h>

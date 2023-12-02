@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+#
+# author: Marco Chieppa | crap0101
+#
 
 import argparse
 import datetime

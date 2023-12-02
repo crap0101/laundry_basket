@@ -1,3 +1,7 @@
+#
+# author: Marco Chieppa | crap0101
+#
+
 """
 Implementation of some sorted collections.
  

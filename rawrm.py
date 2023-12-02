@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#
+# author: Marco Chieppa | crap0101
+#
 
 """
 remove a file from DEST if a file with the same name (but

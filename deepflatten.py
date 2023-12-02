@@ -1,3 +1,10 @@
+#
+# author: Marco Chieppa | crap0101
+# Year: 2022
+# Description: deep-flatten a sequence *without* using recursion
+# and *avoiding* yield's stack overflows.
+# Comparison of times and (un)succerful results of other
+# implementations (references in code).
 
 import argparse
 import builtins

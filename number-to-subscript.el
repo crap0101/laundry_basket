@@ -1,4 +1,8 @@
+;;
+;; author: Marco Chieppa | crap0101
+;;
 ;; number to subscript (O2 -> O₂)
+
 (defun number-to-subscript ()
   (let* ((cursor-info (what-cursor-position))
      (ival (progn (string-match "(\\([0-9]+\\)" cursor-info)

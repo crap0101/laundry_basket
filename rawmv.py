@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#
+# author: Marco Chieppa | crap0101
+#
 
 """
 given a path, create a sub-folder and move selected files into it

@@ -1,5 +1,8 @@
 # Python 3.8.10
 # Cfr. https://forum.ubuntu-it.org/viewtopic.php?f=33&t=649821
+#
+# author: Marco Chieppa | crap0101
+#
 
 import itertools
 import operator

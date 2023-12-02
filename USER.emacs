@@ -1,4 +1,23 @@
-;; .emacs init file by crap0101
+;; .emacs init file by Marco Chieppa | crap0101
+
+
+;; load vibuf ;;
+(add-to-list 'load-path "/home/crap0101/local/share/emacs")
+(require 'vibuf)
+; add hooks
+(add-hook 'find-file-hook 'vibuf-create-buffer-hook-function)
+(add-hook 'kill-buffer-hook 'vibuf-kill-buffer-hook-function)
+(add-hook 'emacs-startup-hook 'vibuf-set__buffer-list-default)
+(add-hook 'emacs-startup-hook (lambda () (vibuf-set__excluded-names vibuf__excluded-names)))
+; set some vars
+(vibuf-set__buffer-name-if-empty "*scratch*")
+; ...and set key bindings
+(global-set-key (kbd "C-S-<left>") (lambda () (interactive) (vibuf-prev-buffer)))
+(global-set-key (kbd "C-S-<right>") (lambda () (interactive) (vibuf-next-buffer)))
+
+
+
+
 
 ;; maximize window
 (setq initial-frame-alist '((fullscreen . maximized)))
@@ -37,6 +56,14 @@ buffer's lines, go to the last line."
   (interactive "p")
   (kill-ring-save (line-beginning-position)
 		  (line-beginning-position (+ 1 (if arg arg 1)))))
+
+; search by region
+(defun search-region (start end)
+  "Starts a search using the region of the current buffer."
+  (interactive "r")  
+  (isearch-mode t nil nil nil)
+  (deactivate-mark)
+  (isearch-yank-string (buffer-substring-no-properties start end)))
 
 ; insert date
 (defun insert-date (prefix)
@@ -79,15 +106,21 @@ buffer's lines, go to the last line."
 ;;;;;;;;;;;;;;
 ;; bindings ;;
 ;;;;;;;;;;;;;;
+
+;; redefine this
+(global-set-key "\C-xw" 'other-window)
+
+;; others simple bindings
 (global-set-key "\C-c\C-r" (lambda () (interactive)
 			     (progn (revert-buffer nil t) (message "%s" "buffer reverted"))))
-; for previously defined functions
+;; for previously defined functions
 (global-set-key "\C-cg" 'go-line)
 (global-set-key "\C-c\C-c" 'copy-lines)
+(global-set-key (kbd "C-S-s") 'search-region)
 (global-set-key (kbd "C-c d") 'insert-date)
+(global-set-key (kbd "M-s") (lambda () (interactive) (number-to-subscript)))
 (global-set-key [f2] 'run-python-program)
 (global-set-key [f3] 'run-pythonXY-program)
-(global-set-key (kbd "M-s") (lambda () (interactive) (number-to-subscript)))
 ; change font size with C-[MouseWheelUpOrDown]
 (global-set-key (kbd "<C-mouse-4>") (lambda () (interactive) (text-scale-decrease 1)))
 (global-set-key (kbd "<C-mouse-5>") (lambda () (interactive) (text-scale-increase 1)))
@@ -136,6 +169,7 @@ buffer's lines, go to the last line."
                     :height 120
                     :width 'normal
                     :family "DejaVu Sans Mono")
+(set-face-attribute 'region nil :background "#666666")
 (set-frame-font "DejaVu Sans Mono 15")
 
 
@@ -156,3 +190,15 @@ buffer's lines, go to the last line."
 ;; rust ;;
 (add-to-list 'load-path "/home/crap0101/.emacs.d/rust")
 (require 'rust-mode)
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

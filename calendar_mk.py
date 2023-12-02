@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # python 3.8.10
+#
+# author: Marco Chieppa | crap0101
+#
 
 import argparse
 import calendar

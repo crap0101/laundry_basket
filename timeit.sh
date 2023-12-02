@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# author: Marco Chieppa | crap0101
+#
+
 shopt -s extglob
 
 function usage () {

@@ -1,4 +1,7 @@
 #coding: utf-8
+#
+# author: Marco Chieppa | crap0101
+#
 
 from os.path import split as _split
 from os import sep as _sep

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# author: Marco Chieppa | crap0101
+#
 
 
 if [ $# -eq 0 ]

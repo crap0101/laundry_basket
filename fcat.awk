@@ -1,4 +1,7 @@
 #!/usr/bin/awk -E
+#
+# author: Marco Chieppa | crap0101
+#
 
 
 function usage(progname, sep) {
