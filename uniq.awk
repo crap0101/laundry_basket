@@ -36,17 +36,52 @@
 @include "getopt"
 @include "awkpot"
 
-
-function help() { #XXX+TODO
-    printf("Program help.\n") >> "/dev/stderr"
-    # If not modified by the -F option (XXX: to be written)
-    # a field is a run of blanks.
-    # Fields are skipped before chars.
-    # uniq quasi-clone, ... added -Z and -W option, ... others missing
+function _help(progname, version) {
+    return sprintf(\
+"%s v.%s" "\n"\
+"A uniq quasi-clone, with some options added and others missing!" "\n"\
+"  -c, --count" "\n"\
+"    Prefix lines by number of occurrences." "\n"\
+"  -F, --fields-separator=STR" "\n"\
+"    A character or a multichar string (which can be interpreted as a" "\n"\
+"    regular expression) for field-splitting input lines." "\n"\
+"    By default the gawk's default FS value is used." "\n"\
+"  -O, --out-fields-separator=STR" "\n"\
+"    String separator between fields (actually used only with the -c option)." "\n"\
+"  -f, --skip-fields=N" "\n"\
+"    Avoid comparing the first N fields." "\n"\
+"  -W, --check-fields=N" "\n"\
+"    Compares until the Nth field included." "\n"\
+"  -i, --ignore-case" "\n"\
+"    Case-insensitive comparison." "\n"\
+"  -s, --skip-chars=N" "\n"\
+"    Avoid comparing the first N characters." "\n"\
+"  -w, --check-chars=N" "\n"\
+"    Comparing until the Nth character included." "\n"\
+"  -u, --unique" "\n"\
+"    Only print unique lines." "\n"\
+"  -z, --zero-terminated" "\n"\
+    "Line delimiter is NUL." "\n"\
+"  -Z, --zero-terminated-output" "\n"\
+    "Output line delimiter is NUL." "\n"\
+"  -r, --records-separator=STR" "\n"\
+"    A character or a multichar string (which can be interpreted as a" "\n"\
+"    regular expression) for record-splitting input lines." "\n"\
+"  -R, --out-records-separator=STR" "\n"\
+    "Output line delimiter is STR." "\n"\
+"  -h, --help" "\n"\
+"    Prints this help and exits." "\n"\
+"  -v, --version" "\n"\
+"    Prints the program version and exits." "\n"\
+"  * Note: Fields are skipped before chars.",
+progname, version)
+}
+function help() {
+    printf("%s\n", _help(_PROGNAME, _VERSION)) >> "/dev/stderr"
     awkpot::set_end_exit(1)
 }
 function version() {
-    printf("uniq.awk 0.1\n") >> "/dev/stderr"
+    printf("%s %s\n", _PROGNAME, _VERSION) >> "/dev/stderr"
     awkpot::set_end_exit(0)
 }
 
@@ -55,12 +90,12 @@ function parse_command_line() {
     Optind = 1    # skip ARGV[0]
 
     # parsing command line
-    shortopts = "cF:O:f:iIs:r:R:uw:W:zZh"
+    shortopts = "cF:O:f:is:r:R:uw:W:zZhv"
     longopts = "count,fields-separator:,out-fields-separator:,skip-fields:,"
     longopts = longopts "check-fields:,ignore-case,skip-chars:,check-chars:,"
     longopts = longopts "unique,zero-terminated,zero-terminated-output,"
     longopts = longopts "records-separator:,out-records-separator:,"
-    longopts = longopts "ignore-same,help,version"
+    longopts = longopts "help,version"
 
     while ((c = getopt(ARGC, ARGV, shortopts, longopts)) != -1)
 	switch (c) {
@@ -81,9 +116,6 @@ function parse_command_line() {
 	     	break
 	    case "i": case "ignore-case":
 	     	no_case = 1
-	     	break
-	    case "I": case "ignore-same":
-	     	ignore_same = 1
 	     	break
 	    case "s": case "skip-chars":
 		# we add one since this will be always passed to substr()
@@ -110,15 +142,9 @@ function parse_command_line() {
 	    case "R": case "out-records-separator":
 	     	out_records_separator = Optarg
 	     	break
-	    # case "c": case "otherc":
-	    # 	c_opt = Optarg
-	    # 	break
-	    # case "d": case "otherd":
-	    # 	d_opt = c
-	    # 	break
             case "h": case "help":
 		help()
-            case "version":
+            case "v": case "version":
 		version()
             case "?":
                 # getopt_long already printed an error message.
@@ -184,6 +210,8 @@ function __filter() {
 }
 
 BEGIN {
+    _PROGNAME = "uniq.awk"
+    _VERSION = "0.1"
     parse_command_line()
     _print = "print_line"
     if (count)
@@ -194,6 +222,8 @@ BEGIN {
     # NOTE: using "\0" is not portable, as per
     # https://www.gnu.org/software/gawk/manual/html_node/gawk-split-records.html
     # but seems the uniq way (pun intended).
+    # Not consistent behaviour using "\0" here vs command line...
+    # for now stick with this and use the -zZ options for null-terminated records.
     if (awkpot::check_assigned(records_separator))
 	RS = records_separator
     if (zeroes)
