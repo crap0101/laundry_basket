@@ -73,7 +73,11 @@ function _help(progname, version) {
 "    Prints this help and exits." "\n"\
 "  -v, --version" "\n"\
 "    Prints the program version and exits." "\n"\
-"  * Note: Fields are skipped before chars.",
+"  * NOTE_1: Fields are skipped before chars." "\n"\
+"  * NOTE_2: -R and -O options supports a limited set of escape sequences" "\n"\
+"  * which can be used for a sensible output. Right now are supported:" "\n"\
+"   \"\\0\", \"\\n\", \"\\a\", \"\\b\", \"\\f\", \"\\r\", \"\\t\", \"\\v\"." "\n"\
+"    Any other backslash sequence will be printed literally." "\n",
 progname, version)
 }
 function help() {
@@ -209,6 +213,7 @@ function __filter() {
     return __current
 }
 
+
 BEGIN {
     _PROGNAME = "uniq.awk"
     _VERSION = "0.1"
@@ -222,22 +227,26 @@ BEGIN {
     # NOTE: using "\0" is not portable, as per
     # https://www.gnu.org/software/gawk/manual/html_node/gawk-split-records.html
     # but seems the uniq way (pun intended).
-    # Not consistent behaviour using "\0" here vs command line...
-    # for now stick with this and use the -zZ options for null-terminated records.
     if (awkpot::check_assigned(records_separator))
 	RS = records_separator
     if (zeroes)
 	RS = "\0"
-    if (awkpot::check_assigned(out_records_separator))
-	ORS = out_records_separator
+    if (awkpot::check_assigned(out_records_separator)) {
+	if (out_records_separator != awkpot::make_escape(out_records_separator))
+	    ORS = awkpot::make_escape(out_records_separator)
+	else
+	    ORS = out_records_separator
+    }
     if (zero_out)
 	ORS = "\0"
     if (awkpot::check_assigned(fields_separator))
 	FS = fields_separator
-    if (awkpot::check_assigned(out_fields_separator))
-	OFS = out_fields_separator
-    else
-	OFS = FS # OFS's pretty unused, actually (just for -c)
+    if (awkpot::check_assigned(out_fields_separator)) {
+	if (out_fields_separator != awkpot::make_escape(out_fields_separator))
+	    OFS = awkpot::make_escape(out_fields_separator)
+	else
+	    OFS = out_fields_separator
+    }
     if (no_case)
 	IGNORECASE = 1
     
@@ -270,5 +279,3 @@ END {
     awkpot::end_exit()
     @_print(last)
 }
-
-
