@@ -9,11 +9,55 @@
 # a formatted version suitable for use
 # in the program's help() function.
 
+@include "getopt"
+# usually shipped with gawk
 @include "awkpot"
 # https://github.com/crap0101/awkpot
 
+function help() {
+    printf( \
+	"Reads a plain text file and outputs a formatted version suitable" "\n"	\
+	"for use in the program's help() function." "\n\n"	\
+	"USAGE: %prog [FILE, ...]\n")
+    awkpot::set_end_exit(0)
+}
+
+function version(progname, progversion) {
+    printf("%s v%s\n", progname, progversion)
+    awkpot::set_end_exit(0)
+}
+
+function parse_command_line() {
+    Opterr = 1    # default is to diagnose
+    Optind = 1    # skip ARGV[0]
+
+    # parsing command line
+    shortopts = "hv"
+    longopts = "help,version"
+
+    while ((c = getopt(ARGC, ARGV, shortopts, longopts)) != -1)
+	switch (c) {
+            case "h": case "help":
+		help()
+            case "v": case "version":
+		version("format_help.awk", "0.1")
+            case "?":
+                # getopt_long already printed an error message.
+	        printf("Explanation from %s: unknown option <%s>\n",
+			ARGV[0], ARGV[Optind]) >> "/dev/stderr"
+		exit(1)
+            default:
+		printf("%s: unknown option <%s>\n", ARGV[0], c) >> "/dev/stderr"
+		exit(1)
+	}
+    # clear ARGV
+    for (i = 1; i < Optind; i++)
+        ARGV[i] = ""
+}
+
 
 BEGIN {
+    parse_command_line()
     printf("sprintf(")
 }
 
@@ -23,6 +67,7 @@ BEGIN {
 }
 
 END {
+    awkpot::end_exit()
     printf(")\n")
 }
 
