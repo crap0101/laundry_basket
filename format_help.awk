@@ -9,11 +9,8 @@
 # a formatted version suitable for use
 # in the program's help() function.
 
-
 @include "awkpot"
 # https://github.com/crap0101/awkpot
-
-
 
 
 BEGIN {
