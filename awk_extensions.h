@@ -40,7 +40,9 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 #ifndef _STRING_H
  #include <string.h>
 #endif
-
+#ifndef _STDLIB_H
+ #include <stdlib.h>
+#endif
 
 
 #if defined(__WIN32) || defined(__WIN64)
@@ -93,6 +95,71 @@ const String _val_types[] = {
  * Some functions used by various extensions:
  */
 
+String
+alloc_string(String str, size_t size)
+{
+  /*
+  * Allocates $size bytes for the String $str and returns a pointer
+  * to the allocate memory (or NULL if something went wrong).
+  * $str must be either NULL or a pointer returned from a
+  * previously call of (c|m|re)alloc.
+  */
+    dprint("(re/alloc) size=%zu\n", size);
+    str = realloc(str, sizeof(String) * size);
+    return str;
+}
+
+
+int
+copy_element(awk_value_t item, awk_value_t * dest )
+{
+  /*
+   * Copies $item on $*dest using the make_* gawk's api functions.
+   * Returns 1 if succedes, 0 otherwise.
+   * Works with AWK_(STRING|REGEX|STRNUM|NUMBER|UNDEFINED) and,
+   * if available, AWK_BOOL.
+   * For others val_type (such AWK_ARRAY, which are much more complex
+   * to handle), always returns 0. Such cases must be checked before or
+   * after calling this function.
+   */
+  switch (item.val_type) {
+  case AWK_STRING:
+    make_const_string(item.str_value.str, item.str_value.len, dest);
+    return 1;
+  case AWK_REGEX:
+    make_const_regex(item.str_value.str, item.str_value.len, dest);
+    return 1;
+  case AWK_STRNUM:
+    make_const_user_input(item.str_value.str, item.str_value.len, dest);
+    return 1;
+  case AWK_NUMBER:
+    make_number(item.num_value, dest);
+    return 1;
+/* not in gawkapi.h (3.0) */
+#ifdef AWK_BOOL
+  case AWK_BOOL:
+    make_bool(item.bool_value, dest);
+    return 1;
+#endif
+  case AWK_UNDEFINED:
+    dprint("Undefined: type <%d>\n", AWK_UNDEFINED);
+    make_null_string(dest);
+    return 1;
+  case AWK_ARRAY:        // we don't copy arrays here! o.O
+    return 0;
+  case AWK_SCALAR:       // should not happen
+    eprint("Unsupported type: %d (scalar)\n", item.val_type);
+    return 0;
+  case AWK_VALUE_COOKIE: // should not happen
+    eprint("Unsupported type: %d (value_cookie)\n", item.val_type);
+    return 0;
+  default:               // could happen
+    eprint("Unknown val_type: <%d>\n", item.val_type);
+    return 0;
+  }
+}
+
+
 Bool rand_init(rand_init_t how, ...) {
   /*
    * Initialize the pseudo-random number generator (see <man 3 random>).
@@ -130,6 +197,7 @@ Bool rand_init(rand_init_t how, ...) {
   srandom(seed);
   return True;
 }
+
 
 String rand_name(String prefix) {
   /*
