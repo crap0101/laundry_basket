@@ -58,7 +58,7 @@ function parse_command_line() {
 
 BEGIN {
     parse_command_line()
-    printf("sprintf(")
+    printf("BEGIN { printf(")
 }
 
 {
@@ -68,7 +68,7 @@ BEGIN {
 
 END {
     awkpot::end_exit()
-    printf(")\n")
+    printf(") }\n")
 }
 
 
