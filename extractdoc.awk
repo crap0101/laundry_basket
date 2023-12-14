@@ -1,7 +1,9 @@
 #!/usr/bin/env -S awk -E
 
 @include "getopt"
+# usually shipped with gawk
 @include "awkpot"
+# https://github.com/crap0101/awkpot
 
 
 # This bunch of lines are the module "description",
@@ -59,6 +61,11 @@ function spam (a,   x) {
 func spam2(a,   x, y) {  
 }
 
+func spam3(a,   x, y) {  
+    # Like <spam2> this function is show
+    # only when --no-posix-mode is in effect.
+}
+
 function _private (x, y, z) {
     # private doc
 }
@@ -75,11 +82,62 @@ function multiline_f2(a, b, c,    # blanks at the end of the line makes
 ## END OF SAMPLE FUNC DEF ##
 
 function help() {
-    print "XXX+TODO: write help." >> "/dev/stderr"
+    printf("" "\n"							\
+"%s v.%s\n" "\n"\
+"Extract documentation from an awk source file.\n" "\n" \
+"The first bunch of commented out lines (shebang excluded) are the" "\n" \
+"module \"description\", used for general information about the program itself." "\n"\
+"Commented line must be consecutive, without intermixed blank lines even." "\n"\
+"A \"description\" lines is one that match /^\\s*#/ ." "\n"\
+"Function docstrings starts from the line next to the one where the `function'" "\n"\
+"(or even `func', if not in posix mode) keyword has been found, until the line" "\n"\
+"which not match the regular expression /^\\s*#\\s*/ ." "\n"\
+"If the first function's docstring line starts with \"#[NODOC]\", then" "\n"\
+"the docstring will be ignored for that function." "\n"\
+"NOTE: right now multiline definitions as in:" "\n"\
+"function foobar (a, b," "\n"\
+"                 c, d) {" "\n"\
+"   It's foobar" "\n"\
+"}" "\n"\
+"are not fully supported: can be some formatting issues and blanks at the end" "\n"\
+"of the lines can cause to interpreter some parameter as locals... that's" "\n"\
+"because \"locals\" are recognized following the coding convention of add extra" "\n"\
+"spaces before them (default to 4 spaces)." "\n"\
+"" "\n"\
+"" "\n"\
+"    -d, --nodoc," "\n"\
+"      Do not get nor print docstrings." "\n"\
+"    -D, --no-description" "\n"\
+"      Do not print the module description." "\n"\
+"    -e, --exclude REGEX" "\n"\
+"      Skip funtions which name matches REGEX." "\n"\
+"    -f, --only-name" "\n"\
+"      Print the function names only." "\n"\
+"    -F, --print-filename" "\n"\
+"      Prepend the file name on output." "\n"\
+"     -l, --include-locals" "\n"\
+"       Include the function's local parameters." "\n"\
+"     -i, --indent STR" "\n"\
+"       Indent the docstring with STR (default 4 spaces)." "\n"\
+"     -o, --outfile FILE" "\n"\
+"       Output on FILE. Default is to print on stdout." "\n"\
+"     -O, --outfile-suffix STR" "\n"\
+"       Write a file for each input file, naming them FILENAME.STR" "\n"\
+"    -p, --no-posix-mode" "\n"\
+"      Recognize 'func' as a valid keyword for function definition." "\n"\
+"     -s, --sort STR" "\n"\
+"       Sort with the mode specified by STR, which must match /[adr]/" "\n"\
+"       'a' stands for ascending, 'd' for descending, with 'r'" "\n"\
+"       functions are printed in the order were read." "\n"\
+"     -h, --help" "\n"\
+"       Print this help.    " "\n"\
+"     -v, --version" "\n"\
+"       Print the program version." "\n",
+	   PROGNAME, PROGVERSION)
     awkpot::set_end_exit(0)
 }
 function version() {
-    print "XXX+TODO: write version." >> "/dev/stderr"
+    printf("%s v.%s\n", PROGNAME, PROGVERSION)
     awkpot::set_end_exit(0)
 }
 
@@ -88,8 +146,8 @@ function parse_command_line() {
     Optind = 1    # skip ARGV[0]
 
     # parsing command line
-    shortopts = "dDe:fFlo:O:s:phv"
-    longopts = "nodoc,no-description,exclude:,include-locals,only-name,"
+    shortopts = "dDe:fFi:lo:O:s:phv"
+    longopts = "nodoc,no-description,exclude:,include-locals,indent:,only-name,"
     longopts = longopts "outfile:,outfile-suffix:no-posix-mode,sort:,"
     longopts = longopts "print-filename,help,version"
     
@@ -112,6 +170,9 @@ function parse_command_line() {
 		break
 	     case "l": case "include-locals":
 	     	include_locals = 1
+	     	break
+	     case "i": case "indent": # indent docstring
+	     	indent = Optarg
 	     	break
 	     case "o": case "outfile":
 	     	outfile = Optarg
@@ -191,13 +252,17 @@ function get_func_def(s, include_locals,    name, arr, sn, oldrs) {
 }
 
 BEGIN {
+    # INTERNALS
+    PROGNAME = "extractdoc.awk"
+    PROGVERSION = "0.1"
     # some defaults
+    exclude_regex = ""
+    global_no_doc = 0
     include_locals = 0
+    indent = "    "
+    no_description = 0
     posix_mode = 1
     sort_order = "r"
-    global_no_doc = 0
-    no_description = 0
-    exclude_regex = ""
     #outfile_suffix = FILENAME ".extdoc"
 
     parse_command_line()
@@ -264,7 +329,7 @@ $1 ~ /#\[NODOC\]/ {
 
 $1 ~ "#" && _fcurr && (! _nodoc) && (! global_no_doc) {
     sub(/^\s*#\s*/, "")
-    funclist[_idx]["doc"] = sprintf("%s%s\n", funclist[_idx]["doc"], $0)
+    funclist[_idx]["doc"] = sprintf("%s%s%s\n", funclist[_idx]["doc"], indent, $0)
     next
 }
 
