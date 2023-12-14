@@ -30,6 +30,9 @@
 
 # This is NOT a global doc line.
 
+#XXX+TODO: add formatting doc option (doc lines of max length YY)
+#XXX+TODO: add number of blancks (or regex) for locals separator.
+
 ## SAMPLE FUNC DEF ##
 function foo (a, b, c) {}
 function foo2(a, b, c) {
@@ -119,6 +122,7 @@ function help() {
 "       Include the function's local parameters." "\n"\
 "     -i, --indent STR" "\n"\
 "       Indent the docstring with STR (default 4 spaces)." "\n"\
+"       Escape sequences recognized are: \[nbtvrf] ." "\n"\
 "     -o, --outfile FILE" "\n"\
 "       Output on FILE. Default is to print on stdout." "\n"\
 "     -O, --outfile-suffix STR" "\n"\
@@ -172,7 +176,13 @@ function parse_command_line() {
 	     	include_locals = 1
 	     	break
 	     case "i": case "indent": # indent docstring
-	     	indent = Optarg
+		 if (0 < (n = split(Optarg, arrind, /\\[nbtvrf]/, arrsep))) {
+		     indent = ""
+		     for (i=1; i <= n; i++)
+			 indent = indent arrind[i] awkpot::make_escape(arrsep[i])
+		 } else {
+		     indent = Optarg
+		 }
 	     	break
 	     case "o": case "outfile":
 	     	outfile = Optarg
