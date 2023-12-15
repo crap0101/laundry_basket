@@ -31,7 +31,6 @@
 # This is NOT a global doc line.
 
 #XXX+TODO: add formatting doc option (doc lines of max length YY)
-#XXX+TODO: add number of blancks (or regex) for locals separator.
 
 ## SAMPLE FUNC DEF ##
 function foo (a, b, c) {}
@@ -74,12 +73,13 @@ function _private (x, y, z) {
 }
 
 function multiline_f(a, b, c,
-		     d, e, f,
+	d, e, f,
 		     g,    h) {
-    # multi doc
+    # As for now, with -L '    ' the first local var is 'g', since
+    # there are 5 spaces before 'g' (plus tab, not influent).
 }
-function multiline_f2(a, b, c,    # blanks at the end of the line makes
-		      d, e, f,    # the following parameter to be "local"
+function multiline_f2(a, b, c,  # blanks at the end of the line makes
+		      d, e, f,  # the following parameter to be "local"
 		      g, h) {
 }
 ## END OF SAMPLE FUNC DEF ##
@@ -120,9 +120,12 @@ function help() {
 "      Prepend the file name on output." "\n"\
 "     -l, --include-locals" "\n"\
 "       Include the function's local parameters." "\n"\
+"     -L, --locals-sep STR" "\n"\
+"       Use STR (a run of blanks) for distinguish the start of the local" "\n"\
+"       parameters in the function definition (default is 4 spaces)." "\n"\
 "     -i, --indent STR" "\n"\
 "       Indent the docstring with STR (default 4 spaces)." "\n"\
-"       Escape sequences recognized are: \[nbtvrf] ." "\n"\
+"       Escape sequences recognized are: \\[nbtvrf] ." "\n"\
 "     -o, --outfile FILE" "\n"\
 "       Output on FILE. Default is to print on stdout." "\n"\
 "     -O, --outfile-suffix STR" "\n"\
@@ -150,10 +153,10 @@ function parse_command_line() {
     Optind = 1    # skip ARGV[0]
 
     # parsing command line
-    shortopts = "dDe:fFi:lo:O:s:phv"
-    longopts = "nodoc,no-description,exclude:,include-locals,indent:,only-name,"
-    longopts = longopts "outfile:,outfile-suffix:no-posix-mode,sort:,"
-    longopts = longopts "print-filename,help,version"
+    shortopts = "dDe:fFi:lL:o:O:s:phv"
+    longopts = "nodoc,no-description,exclude:,include-locals,locals-sep,"
+    longopts = longopts "indent:,only-name,outfile:,outfile-suffix:,"
+    longopts = longopts "no-posix-mode,sort:,print-filename,help,version"
     
     while ((c = getopt(ARGC, ARGV, shortopts, longopts)) != -1)
 	switch (c) {
@@ -175,15 +178,12 @@ function parse_command_line() {
 	     case "l": case "include-locals":
 	     	include_locals = 1
 	     	break
-	     case "i": case "indent": # indent docstring
-		 if (0 < (n = split(Optarg, arrind, /\\[nbtvrf]/, arrsep))) {
-		     indent = ""
-		     for (i=1; i <= n; i++)
-			 indent = indent arrind[i] awkpot::make_escape(arrsep[i])
-		 } else {
-		     indent = Optarg
-		 }
+	     case "L": case "locals-sep": # separator for locals var parameter
+		 locals_sep = awkpot::make_printable(Optarg)
 	     	break
+	     case "i": case "indent": # indent docstring
+		 indent = awkpot::make_printable(Optarg)
+		 break
 	     case "o": case "outfile":
 	     	outfile = Optarg
 	     	break
@@ -223,8 +223,58 @@ function get_func_name(s) {
 	return s
 }
 
+function get_func_def(s, include_locals,    name, arr, param, sn, oldrs) {
+    delete arr
+    delete param
+    name = get_func_name(s)
+    sub(name, "", s)
 
-function get_func_def(s, include_locals,    name, arr, sn, oldrs) {
+    if (0 == index(s, ")")) {
+	oldrs = RS
+	RS = ")"
+	awkpot::getline_or_die(FILENAME, 1)
+        # also add the ) chomped before, needed at the end
+	s = s "" awkpot::get_record_string() ")" 
+
+	# get the (unused) last chunk of the current line, so as
+	# the next record reading is clean
+	RS = oldrs
+	awkpot::getline_or_die(FILENAME, 1)
+    } else {
+	s = substr(s, 1, index(s, ")"))
+    }
+
+    n = split(s, param, locals_sep)
+    for (i in param)
+    if (! include_locals)
+	for (i=2; i<=n; i++)
+	    delete param[i]
+
+    s = ""
+    for (i in param) {
+	delete arr
+	split(param[i], arr, "\n")
+	for (j in arr) {
+	    gsub(/\s*/, "", arr[j]) # removes blanks
+	    gsub(/#.*$/, "", arr[j]) # removes comments
+	}
+	s = s "" awkpot::join(arr, "", "@ind_num_asc")
+    }
+
+    # multiline
+    if (match(s, /.*,$/))
+	s = substr(s, 1, length(s)-1) ")"
+    gsub(/,/, ", ", s)
+    return name "" s
+}
+
+# ################################################
+# ################################################
+# ################################################
+# ################################################
+# ################################################
+
+function ___get_func_def(s, include_locals,    name, arr, sn, oldrs) {
     if (! index(s, ")")) {
 	oldrs = RS
 	RS = ")"
@@ -270,6 +320,7 @@ BEGIN {
     global_no_doc = 0
     include_locals = 0
     indent = "    "
+    locals_sep = "    "
     no_description = 0
     posix_mode = 1
     sort_order = "r"

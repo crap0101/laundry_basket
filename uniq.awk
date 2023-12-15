@@ -231,22 +231,14 @@ BEGIN {
 	RS = records_separator
     if (zeroes)
 	RS = "\0"
-    if (awkpot::check_assigned(out_records_separator)) {
-	if (out_records_separator != awkpot::make_escape(out_records_separator))
-	    ORS = awkpot::make_escape(out_records_separator)
-	else
-	    ORS = out_records_separator
-    }
+    if (awkpot::check_assigned(out_records_separator)) 
+	ORS = awkpot::make_printable(out_records_separator)
     if (zero_out)
 	ORS = "\0"
     if (awkpot::check_assigned(fields_separator))
 	FS = fields_separator
-    if (awkpot::check_assigned(out_fields_separator)) {
-	if (out_fields_separator != awkpot::make_escape(out_fields_separator))
-	    OFS = awkpot::make_escape(out_fields_separator)
-	else
-	    OFS = out_fields_separator
-    }
+    if (awkpot::check_assigned(out_fields_separator))
+	OFS = awkpot::make_printable(out_fields_separator)
     if (no_case)
 	IGNORECASE = 1
     
