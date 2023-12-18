@@ -30,7 +30,7 @@
 
 # This is NOT a global doc line.
 
-#XXX+TODO: add formatting doc option (doc lines of max length YY)
+#XXX+TODO: (?) add formatting doc option (doc lines of max length YY)
 
 ## SAMPLE FUNC DEF ##
 function foo (a, b, c) {}
@@ -342,6 +342,9 @@ BEGIN {
 	funmatch = @/^function$/
     else
 	funmatch = @/^func(tion)?$/
+
+    # clear outfile
+    printf "" > outfile
 }
 
 BEGINFILE {
@@ -427,7 +430,12 @@ ENDFILE {
     if (print_filename)
 	printf("#file:%s\n", FILENAME) >> outfile
     if (! no_description)
-	printf("=== DESCRIPTION  ===\n%s=========\n", _description) >> outfile
+	printf("====================\n"\
+	       "=== DESCRIPTION  ===\n"\
+	       "====================\n%s\n\n", _description) >> outfile
+    printf("===============\n"\
+	   "== FUNCTIONS ==\n"\
+	   "===============\n\n") >> outfile
     for (i in funclist) {
 	if (names_only)
 	    print funclist[i]["name"] >> outfile
