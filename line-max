@@ -3,44 +3,104 @@
 # author: Marco Chieppa | crap0101
 #
 
-function help () {
-    print "Print file lines longer than N chars."
-    print "USAGE: %prog [-vV] [len=N] file1 [file2 ...]"
-    print "`N` default to 79."
-    print "Default output format: line_number (line length)"
-    print "  modifier:"
-    print "  -v    print file name (even if not match will be found)"
-    print "  -V    prepend the file name for every match."
-    print "NOTE: options cannot be grouped, write -v -V not -vV"
+@include "getopt"
+# usually shipped with gawk
+@include "awkpot"
+# https://github.com/crap0101/awkpot
+
+function help (progname, progversion) {
+    printf("%s (v%s): Prints file lines longer than MAXLEN chars." "\n"	\
+	   "USAGE: %%prog [OPTIONS] [file1, file2 ...]" "\n"	\
+	   "  -m/--maxlen=MAXLEN" "\n"					\
+	   "    Lines longer than MAXLEN will be printed (MAXLEN default to 79)." "\n" \
+	   "    Invalid arguments are silently converted to 0 (uses: strtonum(MAXLEN))." "\n" \
+	   "  -o/--only-num" "\n"					\
+	   "    Prints only the line numbers at witch the longer lines are found." "\n" \
+	   "  -l/--only-line" "\n"					\
+	   "    Prints the lines only if > MAXLEN" "\n"			\
+	   "  -f/--filename" "\n"					\
+	   "    Prepends the current file to the output in the form \"filename:line (length)\"" "\n" \
+	   "" "\n"							\
+	   "  Default output format is: \"line_number:line_len;line\"" "\n"	\
+	   "  Options -o,-l,-f are mutually exclusive." "\n",
+	   progname, progversion)
+    awkpot::set_end_exit(0)
+
 }
+function version(progname, progversion) {
+    printf("%s v%s\n", progname, progversion)
+    awkpot::set_end_exit(0)
+}
+
+function parse_command_line() {
+    Opterr = 1    # default is to diagnose
+    Optind = 1    # skip ARGV[0]
+
+    # parsing command line
+    shortopts = "m:olfhv"
+    longopts = "maxlen:,only-num,only-line,filename,help,version"
+
+    while ((c = getopt(ARGC, ARGV, shortopts, longopts)) != -1)
+	switch (c) {
+	    case "m": case "maxlen":
+		maxlen = strtonum(Optarg)
+		break
+	    case "o": case "only-num":
+		only_num = 1
+		print_func = "print_num"
+		break;
+	    case "l": case "only-line":
+		only_line = 1
+		print_func = "print_line"
+		break
+	    case "f": case "filename":
+		print_filename = 1
+		print_func = "print_fname"
+		break
+            case "h": case "help":
+		help(PROGNAME, VERSION)
+            case "v": case "version":
+		version(PROGNAME, VERSION)
+            case "?":
+                # getopt_long already printed an error message.
+	        printf("Explanation from %s: unknown option <%s>\n",
+			ARGV[0], ARGV[Optind]) >> "/dev/stderr"
+		exit(1)
+            default:
+		printf("%s: unknown option <%s>\n", ARGV[0], c) >> "/dev/stderr"
+		exit(1)
+	}
+    # clear ARGV
+    for (i = 1; i < Optind; i++)
+        ARGV[i] = ""
+}
+
+function print_std(line) { printf("%d:%d:%s\n", FNR, length(line), line) }
+function print_fname(line) { printf("%s:%d:%d:%s\n", FILENAME, FNR, length(line), line) }
+function print_line(line) { print  line }
+function print_num(line) { print FNR }
 
 BEGIN {
-    verbose = 0
-    max = 79
-    filename = ""
-    for (i=i; i<ARGC; i++)
-        if (0 != match(ARGV[i], /len=([0-9]+)/, arr)) {
-            max = arr[1]
-            ARGV[i] = ""
-        } else if (0 != match(ARGV[i], /-v/)) {
-            verbose = or(verbose, 1)
-            ARGV[i] = ""
-        } else if (0 != match(ARGV[i], /-V/)) {
-            verbose = or(verbose, 2)
-            ARGV[i] = ""
-        } else if (0 != match(ARGV[i], /(-h|--help)/)) {
-            help()
-            exit 0
-        }
-}
- 
-FNR == 1 {
-    if (and(verbose, 1))
-        print FILENAME
-    if (and(rshift(verbose, 1), 1))
-        filename = FILENAME " "
+    PROGNAME = "line-max"
+    VERSION = "0.2"
+    print_func = "print_std"
+    maxlen = 79
+    only_num = 0
+    only_line = 0
+    print_filename = 0
+    
+    parse_command_line()
+    if (only_num && only_line) {
+	printf("option conflict: -o/--only-num | -l/--only-line\n") >> "/dev/stderr"
+	awkpot::set_end_exit(1)
+    }
+    if ((only_num || only_line) && print_filename) {
+	_c = only_num ? "-o/--only-num" : "-l/--only-line"
+	printf("option conflict: %s | -f/--filename\n", _c) >> "/dev/stderr"
+	awkpot::set_end_exit(1)
+    }
 }
 
-length($0) > max {
-    printf("%s%d (%d)\n", filename, FNR, length($0))
+length($0) > maxlen {
+    @print_func($0)
 }
