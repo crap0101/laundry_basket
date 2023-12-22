@@ -11,15 +11,21 @@
 function help (progname, progversion) {
     printf("%s (v%s): Prints file lines longer than MAXLEN chars." "\n"	\
 	   "USAGE: %%prog [OPTIONS] [file1, file2 ...]" "\n"	\
-	   "  -m/--maxlen=MAXLEN" "\n"					\
+	   "  -m MAXLEN, --maxlen=MAXLEN" "\n"					\
 	   "    Lines longer than MAXLEN will be printed (MAXLEN default to 79)." "\n" \
 	   "    Invalid arguments are silently converted to 0 (uses: strtonum(MAXLEN))." "\n" \
-	   "  -o/--only-num" "\n"					\
+	   "  -o, --only-num" "\n"					\
 	   "    Prints only the line numbers at witch the longer lines are found." "\n" \
-	   "  -l/--only-line" "\n"					\
+	   "  -l, --only-line" "\n"					\
 	   "    Prints the lines only if > MAXLEN" "\n"			\
-	   "  -f/--filename" "\n"					\
+	   "  -f, --filename" "\n"					\
 	   "    Prepends the current file to the output in the form \"filename:line (length)\"" "\n" \
+	   "  -p, --header" "\n"					\
+	   "    Processing multiple files, print a header before each with the filename." "\n" \
+	   "  -P FMT, --header-fmt=FMT" "\n"					\
+	   "    When -p is used, formats the header using FMT (default is: \"@@@ %%s\\n\")" "\n" \
+	   "    A (and only one) conversion specifications like %%s can be used" "\n" \
+           "    for printing the current filename." "\n" \
 	   "" "\n"							\
 	   "  Default output format is: \"line_number:line_len;line\"" "\n"	\
 	   "  Options -o,-l,-f are mutually exclusive." "\n",
@@ -37,8 +43,8 @@ function parse_command_line() {
     Optind = 1    # skip ARGV[0]
 
     # parsing command line
-    shortopts = "m:olfhv"
-    longopts = "maxlen:,only-num,only-line,filename,help,version"
+    shortopts = "m:olfpP:hv"
+    longopts = "maxlen:,only-num,only-line,filename,header,header-fmt:,help,version"
 
     while ((c = getopt(ARGC, ARGV, shortopts, longopts)) != -1)
 	switch (c) {
@@ -56,6 +62,12 @@ function parse_command_line() {
 	    case "f": case "filename":
 		print_filename = 1
 		print_func = "print_fname"
+		break
+	    case "p": case "header":
+		print_header = 1
+		break
+	    case "P": case "header-fmt":
+		header_fmt = awkpot::make_printable(Optarg)
 		break
             case "h": case "help":
 		help(PROGNAME, VERSION)
@@ -88,6 +100,8 @@ BEGIN {
     only_num = 0
     only_line = 0
     print_filename = 0
+    print_header = 0
+    header_fmt = "@@@ %s\n"
     
     parse_command_line()
     if (only_num && only_line) {
@@ -99,6 +113,11 @@ BEGIN {
 	printf("option conflict: %s | -f/--filename\n", _c) >> "/dev/stderr"
 	awkpot::set_end_exit(1)
     }
+}
+
+BEGINFILE {
+    if (print_header)
+	printf(header_fmt, FILENAME)
 }
 
 length($0) > maxlen {
