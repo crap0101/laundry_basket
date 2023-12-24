@@ -36,6 +36,9 @@ from xml.sax.saxutils import unescape
 _VERSION = '0.1'
 DESCRIPTION = """
 Convert xml subtitles to subrip (*.srt) format.
+NOTE: used for TTML on youtube loooong time ago.
+Needs some upgrade for works in other contexts.
+https://www.w3.org/TR/ttml1/
 """
 
 TRANSCRIPT = 'transcript'

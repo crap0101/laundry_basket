@@ -2,6 +2,7 @@
 #coding: utf-8
 
 # Copyright (C) 2011  Marco Chieppa (aka crap0101)
+# Last update: 2023-12-24
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -27,13 +28,14 @@
 DESCRIPTION = 'The 15-puzzle (aka Gem Puzzle, Game of Fifteen) game using Tk'
 EPILOG = 'mouse buttom-left: MOVE; mouse button right: NEW GAME'
 
-_VERSION = '0.6'
+_VERSION = '0.7'
 
 try:
     import tkinter
+    from tkinter import messagebox
 except ImportError:
     import Tkinter as tkinter
-import tkMessageBox
+    import tkMessageBox as messagebox
 import argparse
 import random
 import logging
@@ -72,8 +74,8 @@ class XV(tkinter.Tk):
 
     def _completed_message(self):
         logging.info("! resolved !")
-        tkMessageBox.showinfo(
-            '', 'resolved!', default=tkMessageBox.OK)
+        messagebox.showinfo(
+            '', 'resolved!', default=messagebox.OK)
 
     def _resolved(self):
         for row in range(self._rc):
@@ -110,12 +112,12 @@ class XV(tkinter.Tk):
                 b.bind('<Button-1>', self._check)
                 b.bind('<Button-3>', self._new_game)
                 b.grid(column=col, row=row, sticky=self._sticky)
-        _weight = self.w / self._rc
+        _weight = self.w // self._rc
         for i in range(self._rc):
             self._frame.grid_columnconfigure(i, weight=_weight)
             self._frame.grid_rowconfigure(i, weight=_weight)
-        self.grid_columnconfigure(0, weight=_weight/2)
-        self.grid_rowconfigure(1, weight=_weight/2)
+        self.grid_columnconfigure(0, weight=_weight//2)
+        self.grid_rowconfigure(1, weight=_weight//2)
         self.mainloop()
 
 

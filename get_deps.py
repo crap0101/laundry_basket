@@ -56,7 +56,7 @@ def get_pkg_deps (pkgname, priorities=(), cache=None):
         cache = apt.Cache()
     pkg = cache[pkgname]
     pkg_deps = set()
-    for dep in pkg.candidateDependencies:
+    for dep in pkg.candidate.dependencies:
         # first choice for multiple packages dep
         pkg_deps.add(dep.or_dependencies[0].name)
         # all of or_*
@@ -140,4 +140,4 @@ if __name__ == '__main__':
         logger.info("Package {what} depends on {num} packages:".format(
             what=pkgname, num=len(deps)))
         if deps:
-            print ' '.join(sorted(deps))
+            print(' '.join(sorted(deps)))

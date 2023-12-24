@@ -112,10 +112,10 @@ def check_win (table):
             return tris[0]
 
 def print_table (table):
-    print "_ %s" % ' '.join(map(str,range(len(table.columns))))
+    print("_ %s" % ' '.join(map(str,range(len(table.columns)))))
     for n, row in enumerate(table.rows):
-        print "%d %s" % (n, ' '.join("%1s" % str(x) for x in row))
-    print
+        print("%d %s" % (n, ' '.join("%1s" % str(x) for x in row)))
+    print()
 
 
 class AutoPlayer (object):
@@ -201,21 +201,21 @@ class HumanPlayer (AutoPlayer):
         super(HumanPlayer, self).__init__(symbol)
 
     def remember (self, *args):
-        print "humans don't remember"
+        print("humans don't remember")
     def learn (self, *args):
-        print 'but they can learn something!'
+        print('but they can learn something!')
     def move (self, table, state):
         while True:
             try:
-                pos = tuple(map(int, raw_input("move: ").split(',')))
+                pos = tuple(map(int, input("move: ").split(',')))
                 table[pos]
             except (KeyboardInterrupt, ValueError, KeyError) as err:
-                print err
+                print(err)
                 continue
             if table[pos] == table.empty:
                 return pos
             else:
-                print "invalid choice"
+                print("invalid choice")
 
 
 def game (player1, player2, sleep=0):
@@ -241,13 +241,13 @@ def no_human (data_file, sleep=1):
     p2.remember(shelf)
     w = game(p1, p2, sleep)
     if w == p2:
-        print "p2 win %s" % p2.symbol 
+        print("p2 win %s" % p2.symbol)
         p2.win = True
     elif w == p1:
-        print "p1 win %s" % p1.symbol
+        print("p1 win %s" % p1.symbol)
         p1.win = True
     else:
-        print "even."
+        print("even.")
         p1.win = p2.win = None
     p1.end_actions()
     p2.end_actions()
@@ -299,15 +299,15 @@ if __name__ == '__main__':
         d = defaultdict(int)
         for n in range(parsed.games):
             d[no_human(parsed.data_file, sleep=0)] += 1
-        print "results", d
+        print("results", d)
     elif parsed.only_human:
         p1 = HumanPlayer(parsed.symbol)
         p2 = HumanPlayer(APLAYERS[not APLAYERS.index(parsed.symbol)])
         w = game(p1, p2)
         if w is not None:
-            print "winner: %s" % w
+            print("winner: %s" % w)
         else:
-            print "even."
+            print("even.")
     elif parsed.no_human:
         no_human(parsed.data_file)
     else:
@@ -316,12 +316,12 @@ if __name__ == '__main__':
         p2.remember(parsed.data_file)
         w = game(p1, p2)
         if w == p2:
-            print "winner: %s" % p2.symbol
+            print("winner: %s" % p2.symbol)
             p2.win = True
         elif w == p1:
-            print "winner: %s" % p1.symbol
+            print("winner: %s" % p1.symbol)
         else:
             p2.win = None
-            print "even."
+            print("even.")
         p2.end_actions()
 

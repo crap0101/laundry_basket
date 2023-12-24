@@ -2,7 +2,7 @@
 # author: Marco Chieppa | crap0101
 #
 
-#NOTE: python2
+#NOTE: should work with any python >= 2.5 up to 3.10
 
 import sys
 try:

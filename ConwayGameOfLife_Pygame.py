@@ -224,9 +224,9 @@ class ConwayGame (object):
                     self.table[i*random.randint(0, ncols-1)] = 1
         else:
             if zfill:
-                cycle = it.chain(map(int, optvalues), it.cycle([0]))
+                cycle = it.chain(list(map(int, optvalues)), it.cycle([0]))
             else:
-                cycle = it.cycle(map(int, optvalues))
+                cycle = it.cycle(list(map(int, optvalues)))
             for p in range(self.nrows*self.ncols):
                 self.table[p] = next(cycle)
         self.neighbors = tuple(
@@ -243,8 +243,8 @@ class ConwayGame (object):
         Check if the cell in the grid at (row,col) is alive,
         returning its number of neighbors.
         """
-        nearp = filter(self.in_grid,
-                       [Point(p.x+row, p.y+col) for p in self.neighbors])
+        nearp = list(filter(self.in_grid,
+                       [Point(p.x+row, p.y+col) for p in self.neighbors]))
         return sum(self.table[p.x*self.ncols+p.y] for p in nearp)
 
     def check_evo (self):
@@ -253,7 +253,7 @@ class ConwayGame (object):
 
     def display (self):
         """display the actual generation."""
-        for value, cell in zip(self.table, self.pyGrid.values()):
+        for value, cell in zip(self.table, list(self.pyGrid.values())):
             pygame.draw.circle(
                 self.screen.surfref, CELL_COLORS[value], cell.center, self.radius, 0)
         pygame.display.update()
@@ -316,9 +316,9 @@ if __name__ == '__main__':
                    args.optvalues, args.density, args.delay, args.zfill)
     g.start()
     if args.printt:
-        print repr(g.inittable)
+        print(repr(g.inittable))
     if args.printg:
-        print repr(g.generations)
+        print(repr(g.generations))
 
 
 """
