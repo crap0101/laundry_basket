@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding: utf-8
 
-# Copyright (C) 2012  Marco Chieppa (aka crap0101)
+# Copyright (C) 2012-2024  Marco Chieppa (aka crap0101)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -33,14 +33,21 @@ import logging
 import operator as op
 import random
 import shelve
+import sys
 import textwrap
 import time
-# external import, see https://gitorious.org/bumpo
-from bumpo.gameUtils import Table
-from bumpo.gameUtils import EmptyObject
+# external import, see https://github.com/crap0101/bumpo
+try:
+    from bumpo.gameUtils import Table
+    bumpo_import_err = False
+except ImportError as err:
+    if __name__ == '__main__':
+        bumpo_import_err = err
+    else:
+        raise
 
 # some constants
-_VERSION = '0.3 (2012-11-16)'
+_VERSION = '0.4 (2024-01-02)'
 DESCRIPTION = """
 A self-learning tic-tac-toe (aka wick wack woe, aka tris, \
 aka tria, aka zero per) program.
@@ -72,7 +79,7 @@ def gen_data (outfile):
             else:
                 tables = [(Table(3, 3), 0)]
             logging.debug(
-                "generating state %d from %d table" % (state, len(tables)))
+                "generating state {} from {} table".format(state, len(tables)))
             state_tables = []
             for table, _ in tables:
                 if check_win(table) or table.isfull:
@@ -112,9 +119,9 @@ def check_win (table):
             return tris[0]
 
 def print_table (table):
-    print("_ %s" % ' '.join(map(str,range(len(table.columns)))))
+    print("_ {}".format(' '.join(map(str,range(len(table.columns))))))
     for n, row in enumerate(table.rows):
-        print("%d %s" % (n, ' '.join("%1s" % str(x) for x in row)))
+        print("{} {}".format(n, ' '.join("{:1}".format(str(x)) for x in row)))
     print()
 
 
@@ -123,7 +130,7 @@ class AutoPlayer (object):
         self._symbol = symbol
         self._data = None
         self._choosed = {}
-        self._outfile = 'volatile_%f_%d.memory' % (time.time(), id(self))
+        self._outfile = 'volatile_{}_{}.memory'.format(time.time(), id(self))
         self.win = False
 
     def __eq__ (self, other):
@@ -155,15 +162,15 @@ class AutoPlayer (object):
             return
         for state, pair in self._choosed.items():
             table, value = pair
-            logging.debug("updating state %s" % state)
+            logging.debug("updating state {}".format(state))
             tables = self._data[state]
             missed = []
             for pos, t_v in enumerate(tables):
                 t, old_value = t_v
                 if t == table:
                     tables[pos] = (t, old_value + changes)
-                    logging.debug("updating table %s (from %d to %d)"
-                                  % (t, old_value, old_value + changes))
+                    logging.debug("updating table {} (from {} to {})".format(
+                        t, old_value, old_value + changes))
                     break
             else:
                 missed.append((table, changes))
@@ -241,10 +248,10 @@ def no_human (data_file, sleep=1):
     p2.remember(shelf)
     w = game(p1, p2, sleep)
     if w == p2:
-        print("p2 win %s" % p2.symbol)
+        print("p2 win {}".format(p2.symbol))
         p2.win = True
     elif w == p1:
-        print("p1 win %s" % p1.symbol)
+        print("p1 win {}".format(p1.symbol))
         p1.win = True
     else:
         print("even.")
@@ -268,6 +275,9 @@ if __name__ == '__main__':
                             help='''
                             Number of game to play in training mode, default=
                             %(default)s (ignored in non-training mode).''')
+        parser.add_argument('-b', '--bumpo-packagedir',
+                            dest='bumpo', metavar='PATH',
+                            help='basepath of the bumpo package (if not installed)')
         parser.add_argument('-d', '--debug',
                             choices=DEBUG_LEVELS, dest='debug',
                             default=DEBUG_LEVEL,
@@ -291,6 +301,12 @@ if __name__ == '__main__':
         return parser.parse_args()
 
     parsed = get_parsed()
+    if parsed.bumpo:
+        sys.path.insert(0, parsed.bumpo)
+        sys.modules['bumpo'] = __import__('src')
+        from bumpo.gameObjects import Table
+    elif bumpo_import_err:
+        raise bumpo_import_err
     logging.basicConfig(format='%(levelname)s: %(message)s',
                         level=getattr(logging, parsed.debug)) 
     if parsed.gen_data:
@@ -305,7 +321,7 @@ if __name__ == '__main__':
         p2 = HumanPlayer(APLAYERS[not APLAYERS.index(parsed.symbol)])
         w = game(p1, p2)
         if w is not None:
-            print("winner: %s" % w)
+            print("winner: {}".format(w))
         else:
             print("even.")
     elif parsed.no_human:
@@ -316,10 +332,10 @@ if __name__ == '__main__':
         p2.remember(parsed.data_file)
         w = game(p1, p2)
         if w == p2:
-            print("winner: %s" % p2.symbol)
+            print("winner: {}".format(p2.symbol))
             p2.win = True
         elif w == p1:
-            print("winner: %s" % p1.symbol)
+            print("winner: {}".format(p1.symbol))
         else:
             p2.win = None
             print("even.")

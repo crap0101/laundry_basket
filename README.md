@@ -15,7 +15,6 @@ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED WAR
 
 
 ========= TODO:
-ConwayGameOfLife_Pygame.py: imported bumpo package needs to be updated for work with python3
 load_package.py: imp deprecated
-tris.py: imported bumpo package needs to be updated for work with python3
+tris.py: make a pygame/bumpo interface, since it is used.
 xml2srt: wrote it looong time ago, a q&d script for transpose captions from youtube... needs to be extended for works with standard files.

@@ -282,6 +282,7 @@ class ConwayGame (object):
         """Start the game."""
         self.display()
         self._playing = True
+        # XXX+NOTE: pygame.RESIZABLE not implemented... the window shrinks, the Display not xD
         while True:
             for event in pygame.event.get():
                 if event.type in (pygame.QUIT, pygame.KEYDOWN):
@@ -306,12 +307,14 @@ if __name__ == '__main__':
     args = get_parsed()
     if args.bumpo:
         sys.path.insert(0, args.bumpo)
+        sys.modules['bumpo'] = __import__('src')
         from bumpo.gameObjects import GenericGameObject, Grid
         from bumpo.baseObjects import Display
     elif bumpo_import_err:
         raise bumpo_import_err
     pygame.init()
     screen = Display((args.w, args.h), check_mode(args.scr_mode))
+    screen.set_caption("Conway's Game of Life")
     g = ConwayGame(screen, args.rows, args.cols,
                    args.optvalues, args.density, args.delay, args.zfill)
     g.start()
