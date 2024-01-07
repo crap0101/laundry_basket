@@ -37,6 +37,7 @@ COMMANDS:
 import array
 import argparse
 import itertools as it
+import logging
 import os
 import sys
 import random
@@ -46,7 +47,7 @@ import tkinter
 
 STICKY = tkinter.N+tkinter.W+tkinter.S+tkinter.E
 
-VERSION = '0.2'
+VERSION = '0.3'
 
 RECT_COLOR = 'red'
 BG_COLOR = 'black'
@@ -55,6 +56,26 @@ COLOR_DEAD = BG_COLOR
 CELL_COLORS = (COLOR_DEAD, COLOR_LIVE)
 
 E_CONFIGURE = 22
+
+# from percentage_range.py
+def perc(value, perc, fun=lambda n:n):
+    """
+    value => a number
+    perc  => the requested percentage of $value to get
+    fun   => a callable to be applied to the result
+             (like int(), math.floor(), ...).
+             Default to the identity function.
+    """
+    x = perc * value / 100
+    return fun(x)
+# from percentage_range.py
+def in_perc_range(num, value, perc_value, fun=lambda n:n):
+    """
+    Returns True if $num is in the ±$perc range of $value.
+    """
+    x = perc(value, perc_value, fun)
+    return num >= (value - x) and num <= (value + x)
+
 
 def get_parsed (args=None):
     """
@@ -96,7 +117,12 @@ def get_parsed (args=None):
                          metavar='NUM', help="window width")
     parser.add_argument('-p', '--print-inittable',
                         dest='printt', action='store_true',
-                        help='Prints initial table')
+                        help='Prints initial table.')
+    parser.add_argument('-V', '--verbose',
+                        dest='verbose',  action='store_const',
+                        const=logging.DEBUG,
+                        default=logging.INFO,
+                        help='prints some info.')
     parser.add_argument('-v', '--version',
                         action='version', version=VERSION)
     return parser.parse_args(args)
@@ -152,6 +178,7 @@ class ConwayGame (object):
         self._frame = None
         self._canvas = None
         self._loop_id = None
+        self._update_canvas_id = None
         self._items = {}
         self.delay = delay
         self._playing = True
@@ -219,12 +246,14 @@ class ConwayGame (object):
         """Start the game."""
         self._frame_config()
         self._canvas_config()
-
-        self._button = tkinter.Button(self._frame, text="update canvas", command=self._update_canvas_size)
+        ''' Actually unused... keep here for other things, maybe
+        self._button = tkinter.Button(
+               self._frame, text="update canvas",
+               command=self._update_canvas_size)
         self._button.rowconfigure(0, weight=1)
         self._button.columnconfigure(0, weight=1)
         self._button.grid(row=1, sticky=STICKY)
-
+        #'''
         self._root = self._frame.winfo_toplevel()
         self._root.rowconfigure(0, weight=1)
         self._root.columnconfigure(0, weight=1)
@@ -254,15 +283,11 @@ class ConwayGame (object):
         return True
 
     def update (self):
-        print('UPDATE:',
-              self._canvas.winfo_width(), self._canvas.winfo_height(),
-              "|", self.w, self.h, "ITEMS:", len(self._items), end=' ** ')
         if not self._playing and self._loop_id is not None:
             self._canvas.after_cancel(self._loop_id)
             self._loop_id = None
         else:
             evolving = self.step()
-            print("evolving:", bool(evolving))
             if not evolving:
                 self._playing = False
             cols = self.cols
@@ -270,6 +295,10 @@ class ConwayGame (object):
                 self._canvas.itemconfig(
                     item, fill=CELL_COLORS[self.table[r * cols + c]])
             self._loop_id = self._canvas.after(self.delay, self.update)
+            logger.debug('UPDATE |canvas {}x{} | size {}x{}'
+                  ' |items: {} | evolving: {}'.format(
+                      self._canvas.winfo_width(), self._canvas.winfo_height(),
+                      self.w, self.h, len(self._items), bool(evolving)))
 
     def _frame_config(self):
         self._frame = tkinter.Frame(self._root)
@@ -288,16 +317,26 @@ class ConwayGame (object):
         self._canvas.columnconfigure(0, weight=1)
 
     def _create_rect(self):
-        print("RECT:", self.rows, self.cols, "+++", self.w, self.h)
+        logger.debug("RECT: {}x{}|{}x{}".format(
+            self.rows, self.cols, self.w, self.h))
         w, h = self._rect_size
         self._canvas.create_rectangle(
             0, 0, w, h, width=2, outline=RECT_COLOR)
 
     def _resize (self, e):
-        print("*** CONFIGURE ***", e.type, e.num, e.width, e.height,
-              "|",self._canvas.winfo_width(),self._canvas.winfo_height(),
-              "|",self._canvas.winfo_reqwidth(),self._canvas.winfo_reqheight())
-        self.w, self.h = e.width, e.height
+        if (not in_perc_range(e.width, self.w, 5)
+            or not in_perc_range(e.height, self.h, 5)):
+            logger.debug("RESIZE |event: {}x{} |self: {}x{} "
+                  "|canvas: {}x{} |req: {}x{}".format(
+                  e.width, e.height,
+                  self.w, self.h,
+                  self._canvas.winfo_width(), self._canvas.winfo_height(),
+                  self._canvas.winfo_reqwidth(),self._canvas.winfo_reqheight()))
+            if self._update_canvas_id is not None:
+                self._canvas.after_cancel(self._update_canvas_id)
+            self._update_canvas_id = self._canvas.after(
+                self.delay, self._update_canvas_size)
+            self.w, self.h = e.width, e.height
         
     def _update_canvas_size(self):
         if self._playing:
@@ -312,13 +351,13 @@ class ConwayGame (object):
 
     def _pause_unpause (self, e):
         self._playing ^= True
-        print("PLAYING:", bool(self._playing))
+        logger.debug("PLAYING:".format(bool(self._playing)))
         if self._playing and self._loop_id is None:
             self._loop_id = self._canvas.after(self.delay, self.update)
 
     def _toggle_state (self, e):
         if self._playing:
-            print("WARNING: can't change state while playing...")
+            logger.warning("Can't change state while playing...")
             return
         try:
             self._canvas.update_idletasks()
@@ -329,18 +368,19 @@ class ConwayGame (object):
             self._canvas.itemconfig(
                 item, fill=CELL_COLORS[self.table[r * cols + c]])
         except IndexError:
-            print("WARNING: no items at table[{}]".format(r*cols+c))
+            logger.warning("No items at table[{}]".format(r*cols+c))
         except KeyError:
             print("WARNING: no items at ({},{}) (gridsize={}x{})".format(
                 e.x, e.y, self.rows, self.cols))
-        print("TOGGLE at ({},{}) (gridsize={}x{})".format(
+        logger.debug("TOGGLE at ({},{}) (gridsize={}x{})".format(
             e.x, e.y, self.rows, self.cols))
 
 
 if __name__ == '__main__':
     args = get_parsed()
-    print ((args.w, args.h),
-                   (args.rows, args.cols))
+    logging.basicConfig(level=args.verbose)
+    logger = logging.getLogger()
+    logger.name = 'ConwayGame'
     g = ConwayGame(None, (args.w, args.h),
                    (args.rows, args.cols),
                    args.optvalues, args.density,
