@@ -47,6 +47,7 @@ from typing import BinaryIO
 # EXTERNAL, OPTIONAL IMPORT
 try:
     import chardet
+    from chardet.universaldetector import UniversalDetector
     HAVE_CHARDET = True
 except ImportError:
     HAVE_CHARDET = False
@@ -86,7 +87,22 @@ def get_binstream(filename, mode='r'):
     return open(filename, mode=mode+'b')
 
 
-def guess_encoding(filename):
+def guess_encoding_bigfile(filename, chunk=1024):
+    """
+    Returns the encoding of $filename, or None if fails.
+    Reads $chunk bytes of $filename at a time.
+    """
+    detect = UniversalDetector()
+    with open(filename, mode='rb') as f:
+        while (readed := f.read(chunk)):
+            detect.feed(readed)
+            if detect.done:
+                break
+    detect.close()
+    return detect.result['encoding']
+
+def guess_encoding_default(filename):
+    """Returns the encoding of $filename, or None if fails."""
     with open(filename, mode='rb') as f:
         return chardet.detect(f.read())['encoding']
 
@@ -96,6 +112,14 @@ def get_parser():
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("-b", '--bigfile',
+                        dest="bigfile", action='store_true',
+                        help='''Use a specific function (rather slower
+                        but safer) to check the file's encoding,
+                        trying to avoid memory errors.''')
+    parser.add_argument("-c", '--check-enc-only',
+                        dest="only_check_enc", action='store_true',
+                        help="Prints the input file's encoding and exit.")
     parser.add_argument("-e", '--input-encoding',
                         dest="input_enc", default=None, metavar='ENC',
                         help='''input file encoding.
@@ -117,14 +141,23 @@ def get_parser():
 if __name__ == '__main__':
     parser = get_parser()
     parsed = parser.parse_args()
+    if parsed.bigfile:
+        guess_encoding = guess_encoding_bigfile
+    else:
+        guess_encoding = guess_encoding_default
     if parsed.input_enc is None:
         if parsed.input_file is sys.stdin:
-            parser.error('''Using stdin as input requires
-            specify the input encoding.''')
+            parser.error("Using stdin as input requires "
+                         "specify the input encoding.")
         elif not HAVE_CHARDET:
-            parser.error('''Can't guess input encoding,
-            specify it of install the chardet module.''')
+            parser.error("Can't guess input encoding, "
+                         "specify it of install the chardet module.")
         parsed.input_enc = guess_encoding(parsed.input_file)
+    if parsed.only_check_enc:
+        print(parsed.input_enc)
+        sys.exit(0)
+    if parsed.input_enc is None:
+        parser.error("Can't detect input file encoding")
     if not check_codec(parsed.input_enc):
         parser.error(f'Unknown input codec: {parsed.input_enc}')
     if not check_codec(parsed.output_enc):
