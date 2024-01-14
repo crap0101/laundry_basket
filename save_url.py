@@ -25,9 +25,10 @@
 
 import argparse
 import os
+import random
 import re
 import sys
-from urllib.request import urlopen, URLError
+from urllib.request import build_opener, URLError
 # external:
 from bs4 import BeautifulSoup
 
@@ -45,14 +46,32 @@ PARSERS = ["html.parser", "html5lib", "lxml-xml", "lxml"]
 RE_PATTERN = '[/:\\!]'
 CHAR_REPLACEMENT = '_'
 EXTENSIONS = ('.html', '.xml')
+USER_AGENT_LIST = [
+    ('User-agent', 'Mozilla/5.0'),
+    ('User-agent','Chrome/Android: Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36'),
+    ('User-agent','Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0'),
+    ('User-agent','Chrome/Windows: Mozilla/5.0 (Windows NT 10.0; Win64; x64)'),
+    ('User-agent','Chrome/Windows: Mozilla/5.0 (Windows NT 10.0) (KHTML, like Gecko) Chrome/87.0.4280.88'),
+    ('User-agent','Chrome/macOS: Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1)'),
+    ('User-agent','Chrome/Linux: Mozilla/5.0 (X11; Linux x86_64)'),
+    ('User-agent','Chrome/iPhone: Mozilla/5.0 (iPhone; CPU iPhone OS 14_3 like Mac OS X)'),
+    ('User-agent','Chrome/iPad: Mozilla/5.0 (iPad; CPU OS 14_3 like Mac OS X) AppleWebKit/605.1.15'),
+    ('User-agent','Chrome/Android: Mozilla/5.0 (Linux; Android 10; SM-A205U)'),
+    ('User-agent','Chrome/Android: Mozilla/5.0 (Linux; Android 10; LM-Q720)'),
+    ('User-agent','Firefox/Windows: Mozilla/5.0 (Windows NT) Firefox/84.0'),
+    ('User-agent','Firefox/macOS: Mozilla/5.0 (Macintosh; Intel Mac OS X 11.1) Gecko/20100101 Firefox/84.0'),
+    ('User-agent','Firefox/Linux: Mozilla/5.0 (X11; Linux i686; rv:84.0) Firefox/84.0'),
+    ('User-agent','Firefox/iPad: Mozilla/5.0 (iPad; CPU OS 11_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)'),
+    ('User-agent','Chrome/Android: Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36'),
+    ('User-agent','Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0')
+]
 
 
 
-
-def get_data(url, parser):
+def get_data(opener, url, parser):
     bs = result = False
     try:
-        with urlopen(url) as f:
+        with opener.open(url) as f:
             bs = BeautifulSoup(f, parser)
             result = True
     except URLError as err:
@@ -69,8 +88,8 @@ def writefile(outfile, bsdata):
         return False, err
 
 
-def doit(url, dest, parser_name, regex, replacement, extension):
-    ok, data = get_data(url, parser_name)
+def doit(opener, url, dest, parser_name, regex, replacement, extension):
+    ok, data = get_data(opener, url, parser_name)
     if not ok:
         print(data)
         return False
@@ -126,6 +145,10 @@ def get_parser():
                         help='''If the specified parsed (or the default one)
                         returns error, tries with other available parses.''')
     """
+    parser.add_argument("-u", "--user-agent",
+                        dest="user_agent", metavar="STR",
+                        help='''Use %(metavar)s as the user-agent. Defaults to
+                        use a random one.''')
     parser.add_argument('-v', '--version',
                         action='version', version=f'{VERSION}')
     # positional:
@@ -145,6 +168,11 @@ if __name__ == '__main__':
     parsed.replace_regex = re.compile(parsed.replace_regex)
     if not parsed.dest:
         parsed.dest = sys.stdout.fileno()
-    sys.exit(not doit(parsed.url, parsed.dest, parsed.default_parser,
+    opener = build_opener()
+    if parsed.user_agent:
+        opener.addheaders = [('User-agent', parsed.user_agent)]
+    else:
+        opener.addheaders = [random.choice(USER_AGENT_LIST)]
+    sys.exit(not doit(opener, parsed.url, parsed.dest, parsed.default_parser,
                       parsed.replace_regex, parsed.replace_chars,
                       parsed.extension))
