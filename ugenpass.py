@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 # Name: ugenpass
-# Version: 0.8
+# Version: 0.9
 # Author: Marco Chieppa ( a.k.a. crap0101 )
-# Last Update: 2023-12-23
+# Last Update: 2024-01-15
 # Description: password generator
 # Requirement: Python >= 2.7
 
@@ -52,8 +52,8 @@ else:
         return (chr((ord(x) ^ a ^ b) % chr_range) for x in os.urandom(n))
     range = xrange
 
-VERSION = '0.8'
-DESCRIPTION = "Generate passwords."
+VERSION = '0.9'
+DESCRIPTION = "Passwords generator."
 
 SYMBOLS = tuple(set(string.printable).difference(string.whitespace))
 STR_CONSTRAINT = {
@@ -254,10 +254,15 @@ if __name__ == '__main__':
     p.add_argument('-c', '--constraint',
                    dest='constraint', action='append',
                    choices='DIG UPPER LOWER PUNCT'.split(), nargs='+',
-                   help='''Adds some constraint to the generate string, forcing
-                           to include chars from the DIG (digits), UPPER
-                           (uppercase ascii), LOWER (lowercase ascii) or PUNCT
-                           (punctuation) sets, or any combinations of them.''')
+                   help='''Adds some constraint to the generated string,
+                   forcing to include chars from the DIG (digits), UPPER
+                   (uppercase ascii), LOWER (lowercase ascii) or PUNCT
+                   (punctuation) sets, or any combinations of them.
+                   Ignored when used in conjunction with the -C option. ''')
+    p.add_argument('-C', '--all-constraint',
+                   dest='all_constraints', action='store_const',
+                   const=['DIG UPPER LOWER PUNCT'.split()],
+                   help='Use all the constraints available for the -c option.')
     p.add_argument('-d', '--distinct', dest='uniq', action='store_true',
                    help='Generates password without repeated characters')
     p.add_argument('-t', '--times', dest='times',
@@ -297,8 +302,8 @@ if __name__ == '__main__':
                    """.format(r_all=REPORT_ALL, r_only=REPORT_ONLY))
     args = p.parse_args()
     CONSTR = 0
-    if args.constraint:
-        for lst in args.constraint:
+    if args.constraint or args.all_constraints:
+        for lst in (args.constraint, args.all_constraints)[bool(args.all_constraints)]:
             for i in lst:
                 CONSTR |= locals()[i]
     if args.words:
