@@ -132,7 +132,7 @@ def get_parsed (args=None):
 ### CLASSES ###
 ###############
 
-class Point (object):
+class Point:
     """(incomplete) Point class."""
     def __init__ (self, x, y):
         self.x = x
@@ -170,7 +170,7 @@ class Point (object):
         return "{}{}".format(self.__class__.__name__, self.values)
 
 
-class ConwayGame (object):
+class ConwayGame:
     """A class which implements the Conway's game of life with tkinter."""
     def __init__ (self, root=None, size=(300,300), gridsize=(20,20),
                   optvalues=None, density=0, delay=100, zfill=True):
@@ -260,7 +260,7 @@ class ConwayGame (object):
 
         self.create_state()
         self._loop_id = self._canvas.after(self.delay, self.update)
-        self._frame.mainloop()
+        self._root.mainloop()
         return self.generations
 
     def step (self):
