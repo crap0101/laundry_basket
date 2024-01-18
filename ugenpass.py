@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 # Name: ugenpass
-# Version: 0.9
+# Version: 1.0
 # Author: Marco Chieppa ( a.k.a. crap0101 )
-# Last Update: 2024-01-15
+# Last Update: 2024-01-18
 # Description: password generator
 # Requirement: Python >= 2.7
 
@@ -61,8 +61,13 @@ STR_CONSTRAINT = {
     4: set(string.ascii_uppercase),
     8: set(string.ascii_lowercase),
     16: set(string.punctuation),
-    }
-DIG = 2; UPPER = 4; LOWER = 8; PUNCT = 16
+}
+# Replicate for easy use as constants:
+DIG   = 2
+UPPER = 4
+LOWER = 8
+PUNCT = 16
+DICT_CONSTRAINT = dict(DIG = DIG, UPPER = UPPER, LOWER = LOWER, PUNCT = PUNCT)
 
 SEP = ''
 MAXSIZE = sys.maxsize
@@ -129,7 +134,7 @@ def check_constraint (s, constraint):
     """Checks if the generated sequence $s satisfy
     the $constraint mask, a bitwise OR of the
     constants DIG, UPPER, LOWER and PUNCT.
-    Return a tuple of (False, str_constraint[key]) which fails
+    Return a tuple of (False, STR_CONSTRAINT[key]) which fails
     or (True, 0) if success.
     """
     for k,v in STR_CONSTRAINT.items():
@@ -253,7 +258,7 @@ if __name__ == '__main__':
                     help='password(s) length, default: 13')
     p.add_argument('-c', '--constraint',
                    dest='constraint', action='append',
-                   choices='DIG UPPER LOWER PUNCT'.split(), nargs='+',
+                   choices=DICT_CONSTRAINT.keys(), nargs='+',
                    help='''Adds some constraint to the generated string,
                    forcing to include chars from the DIG (digits), UPPER
                    (uppercase ascii), LOWER (lowercase ascii) or PUNCT
@@ -261,7 +266,7 @@ if __name__ == '__main__':
                    Ignored when used in conjunction with the -C option. ''')
     p.add_argument('-C', '--all-constraint',
                    dest='all_constraints', action='store_const',
-                   const=['DIG UPPER LOWER PUNCT'.split()],
+                   const=[DICT_CONSTRAINT.keys()],
                    help='Use all the constraints available for the -c option.')
     p.add_argument('-d', '--distinct', dest='uniq', action='store_true',
                    help='Generates password without repeated characters')
@@ -302,10 +307,17 @@ if __name__ == '__main__':
                    """.format(r_all=REPORT_ALL, r_only=REPORT_ONLY))
     args = p.parse_args()
     CONSTR = 0
-    if args.constraint or args.all_constraints:
-        for lst in (args.constraint, args.all_constraints)[bool(args.all_constraints)]:
-            for i in lst:
-                CONSTR |= locals()[i]
+    __constr = set()
+    __minlen = min(args.lengths)
+    if __minlen < 1:
+        p.error('Invalid lengths: {}'.format(__minlen))
+    for lst in (args.all_constraints or args.constraint):
+        __constr.update(lst)
+    if __constr:
+        if len(__constr) > __minlen:
+            p.error('Insufficient length to satisfy constraints: {}'.format(__minlen))
+        for c in __constr:
+            CONSTR |= DICT_CONSTRAINT[c]
     if args.words:
         try:
             SYMBOLS = tuple(set(get_words(args.words, args.word_rlen, args.max_words)))
@@ -315,7 +327,7 @@ if __name__ == '__main__':
             p.error(e)
         SEP = args.word_sep
     if args.uniq and max(args.lengths) > len(SYMBOLS):
-        p.error("some required length exceed the number of available symbols")
+        p.error("Some required length exceed the number of available symbols")
     if not args.out or args.out == '-':
         out = sys.stdout
     else:
