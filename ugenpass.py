@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Name: ugenpass
-# Version: 1.0
+# Version: 1.1
 # Author: Marco Chieppa ( a.k.a. crap0101 )
 # Last Update: 2024-01-18
 # Description: password generator
@@ -52,7 +52,7 @@ else:
         return (chr((ord(x) ^ a ^ b) % chr_range) for x in os.urandom(n))
     range = xrange
 
-VERSION = '0.9'
+VERSION = '1.1'
 DESCRIPTION = "Passwords generator."
 
 SYMBOLS = tuple(set(string.printable).difference(string.whitespace))
@@ -75,13 +75,10 @@ REPORT_ALL = 'all'
 REPORT_ONLY = 'only'
 NO_REPORT = ''
 
-def pair_from_time ():
-    t = time.time()
-    a = int(t)
-    b = int((t - a) * 1000)
-    if b == 0:
-        b = random.randrange(10000) ^ int(time.time())
-    return a, b
+
+########################
+# GENERATION FUNCTIONS #
+########################
 
 def ugenpass (symbols, n, randfunc=urandom):
     lst = []
@@ -94,7 +91,9 @@ def ugenpass (symbols, n, randfunc=urandom):
         lst.pop(sum(map(ord, randfunc(n))) % n)
     return tuple(symbols[idx] for idx in lst)
 
-def gen (symbols, lengths, times, func=urandom, unique=False, sep='', constraint=0):
+
+def gen (symbols, lengths, times,
+         func=urandom, unique=False, sep='', constraint=0):
     if unique:
         def genfunc(sym, n, func):
             s = set()
@@ -114,6 +113,7 @@ def gen (symbols, lengths, times, func=urandom, unique=False, sep='', constraint
                     else:
                         break
             yield sep.join(x)
+
 
 def get_words (filepath, wrlen, maxwords):
     with (open(filepath) if filepath != '-' else sys.stdin) as wordsfile:
@@ -146,8 +146,18 @@ def check_constraint (s, constraint):
 
 
 
-        
-# Report functions & utility stuff
+####################################
+# REPORT FUNCTIONS & UTILITY STUFF #
+####################################
+
+def pair_from_time ():
+    t = time.time()
+    a = int(t)
+    b = int((t - a) * 1000)
+    if b == 0:
+        b = random.randrange(10000) ^ int(time.time())
+    return a, b
+
 
 def sub_split (s, min=2):
     """
@@ -163,6 +173,7 @@ def sub_split (s, min=2):
     for i in range(l-min+1):
         for j in range(i+min, l+1):
             yield s[i:j]
+
 
 def print_report (generated, symbols, out=sys.stdout):
     """test and report info about the generation"""
@@ -215,42 +226,78 @@ def print_report (generated, symbols, out=sys.stdout):
         print("* NO repeated patterns found ({} of {})".format(
             len(found), tot_subp), file=out)
 
-# parsing utilities
+
+#####################
+# PARSING UTILITIES #
+#####################
+
 class RangeAction (argparse.Action):
-    def __init__ (self, option_strings, dest, nargs=None, **kwargs):
+    def __init__ (self,  minvalue=None, maxvalue=None,
+                  option_strings='', dest='', nargs=None, **kwargs):
+        self._min = minvalue
+        self._max = maxvalue
         if nargs is not None:
             raise ValueError("nargs not allowed")
         super(RangeAction, self).__init__(option_strings, dest, **kwargs)
     def __call__ (self, parser, namespace, value, option_string=None):
-        v = value.split(':')
-        lv = len(v)
-        if lv == 1:
-            val = int(v)
-        elif lv == 2:
-            start, end = tuple(map(int, v))
-            if end < start:
-                parser.error("%s: START > END" % option_string)
-            elif start < 1:
-                raise parser.error("%s: START must be > 0" % option_string) 
-            elif end > MAXSIZE:
-                raise parser.error("%s: END must be <= %d" % (MAXSIZE, option_string))
-            val = start, end
+        if value.count(':') > 1:
+            parser.error('{}: wrong format: <{}>'.format(option_string, value))
+        iv = []
+        for x in value.split(':'):
+            if x:
+                try:
+                    iv.append(int(x))
+                except ValueError:
+                    parser.error('{}: wrong value: {}'.format(
+                        option_string, value))
+        if len (iv) == 1:
+            if value.startswith(':'):
+                start = self._min
+                end = iv[0]
+            else:
+                start = iv[0]
+                end = self._max
+        elif len (iv) == 2:
+            start, end = iv
         else:
-            raise
-        setattr(namespace, self.dest, val)
+            parser.error('{}: wrong format: <{}>'.format(option_string, value))
+        if start > end:
+            parser.error('{}: wrong format: <{}>'.format(option_string, value))
+        if start < self._min:
+            parser.error('{}: START value must be >= {}'.format(
+                option_string, self._min))
+        if end > self._max:
+            parser.error('{}: END value must be <= {}'.format(
+                option_string, self._max))
+        setattr(namespace, self.dest, (start, end))
 
-class MaxWordsAction (argparse.Action):
-    def __init__ (self, option_strings, dest, nargs=None, **kwargs):
+
+class IntBoundAction (argparse.Action):
+    """
+    To accepts values in a specific range only. 
+    """
+    def __init__ (self, minvalue=None, maxvalue=None,
+                  option_strings='', dest='', nargs=None, **kwargs):
+        self._min = minvalue or 1
+        self._max = maxvalue or MAXSIZE
         if nargs is not None:
             raise ValueError("nargs not allowed")
-        super(MaxWordsAction, self).__init__(option_strings, dest, **kwargs)
+        super(IntBoundAction, self).__init__(option_strings, dest, **kwargs)
     def __call__ (self, parser, namespace, value, option_string=None):
         val = int(value)
-        if val > MAXSIZE:
-            raise parser.error("%s: must be <= %d" % (option_string, MAXSIZE))
+        if val > self._max or val < self._min:
+            raise parser.error("{} must be in range {}..{}".format(
+                option_string, self._min, self._max))
         setattr(namespace, self.dest, value)
 
-if __name__ == '__main__':
+
+def range_int_bound_factory (cls, minv, maxv):
+    def foo(*a, **k):
+        return cls(minv, maxv, *a, **k)
+    return foo
+
+
+def get_parser():
     _words_from_file = '-w', '--words-from-file'
     p = argparse.ArgumentParser(description=DESCRIPTION)
     p.add_argument('lengths', nargs='*', default=[13],
@@ -281,21 +328,23 @@ if __name__ == '__main__':
                            If %(metavar)s is "-" read words from stdin.''')
     p.add_argument('-v', '--version', action='version', version=VERSION)
     wp = p.add_argument_group('password from words specific options')
+    wp.add_argument('-l', '--word-length',
+                    dest='word_rlen',
+                    default=(1,MAXSIZE),  metavar='START[:END]',
+                    action=range_int_bound_factory(RangeAction, 1, MAXSIZE),
+                   help='''Uses words with length in the %(metavar)s range
+                        (default: from 1 up to {}).'''.format(MAXSIZE))
+    wp.add_argument('-m', '--max-words',
+                    dest='max_words', type=int,
+                    default=MAXSIZE, metavar='NUMBER',
+                    action=range_int_bound_factory(IntBoundAction, 1, MAXSIZE),
+                    help='''Reads at most %(metavar)s words from the input
+                        file. Default: %(default)s'''.format(MAXSIZE))
     wp.add_argument('-s', '--word-sep',
                    dest='word_sep', default=' ', metavar='STRING',
                    help='''Uses %(metavar)s as separator when generating
                         password using the {} option (default: "%(default)s").
                         '''.format('/'.join(_words_from_file)))
-    wp.add_argument('-l', '--word-length',
-                   dest='word_rlen', default=(1,MAXSIZE),
-                   action=RangeAction, metavar='START[:END]',
-                   help='''Uses words with length in the %(metavar)s range
-                        (from 1 up to {} (default).'''.format(MAXSIZE))
-    wp.add_argument('-m', '--max-words',
-                   dest='max_words', type=int,  default=MAXSIZE,
-                   action=MaxWordsAction, metavar='NUMBER',
-                   help='''Reads at most %(metavar)s words from the input file.
-                        Default: %(default)s'''.format(MAXSIZE))
     report = p.add_argument_group('I/O and report options')
     report.add_argument('-o', '--output', dest='out', default='', metavar='FILE',
                    help='Outputs on %(metavar)s (default: stdout)')
@@ -305,13 +354,17 @@ if __name__ == '__main__':
                    Optional parameter '{r_all}' prints also the string already
                    produced, '{r_only}' doesn't (the option alone means '{r_only}')
                    """.format(r_all=REPORT_ALL, r_only=REPORT_ONLY))
+    return p
+
+if __name__ == '__main__':
+    p = get_parser()
     args = p.parse_args()
     CONSTR = 0
     __constr = set()
     __minlen = min(args.lengths)
     if __minlen < 1:
         p.error('Invalid lengths: {}'.format(__minlen))
-    for lst in (args.all_constraints or args.constraint):
+    for lst in (args.all_constraints or args.constraint or []):
         __constr.update(lst)
     if __constr:
         if len(__constr) > __minlen:
