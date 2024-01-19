@@ -325,7 +325,9 @@ def get_parser():
     p.add_argument(*_words_from_file, #'-w', '--words-from-file',
                    dest='words', metavar='FILE',
                    help='''Generates password using words from %(metavar)s.
-                           If %(metavar)s is "-" read words from stdin.''')
+                   If %(metavar)s is "-" read words from stdin.'
+                   NOTE: using this option together the -C or -c options works
+                   as expected, albeit not desired.''')
     p.add_argument('-v', '--version', action='version', version=VERSION)
     wp = p.add_argument_group('password from words specific options')
     wp.add_argument('-l', '--word-length',
