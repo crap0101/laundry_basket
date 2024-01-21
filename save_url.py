@@ -31,15 +31,20 @@ import sys
 from urllib.request import build_opener, URLError
 # external:
 from bs4 import BeautifulSoup
+import magic
 
 PROGNAME = 'save_url'
-VERSION = '0.1'
+VERSION = '0.2'
+LAST_UPDATE = '2024-01-21'
 
-__doc__ = f'''{PROGNAME} v{VERSION}
+__doc__ = f'''==================================
+{PROGNAME} v{VERSION} ({LAST_UPDATE})
 Save an url to a file (or stdout).
 
 Tested with Python 3.10.12
-Requires: BeautifulSoup 4 from https://www.crummy.com/software/BeautifulSoup/
+Requires: BeautifulSoup 4 => https://www.crummy.com/software/BeautifulSoup
+          python-magic    => https://github.com/ahupp/python-magic
+==========================================================================
 '''
 
 PARSERS = ["html.parser", "html5lib", "lxml-xml", "lxml"]
@@ -66,29 +71,72 @@ USER_AGENT_LIST = [
     ('User-agent','Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0')
 ]
 
+class FakeBS:
+    """
+    A minimal fake BeautifulSoup() object, with just
+    the needed attributes for this program.
+    """
+    def __init__ (self, data):
+        self.data = data
+        self.title = None
+        self.is_xml = False
+    def prettify (self):
+        return self.data
 
+def check_for_beauty (buff, size=2048) -> (bool, str):
+    """
+    Checks the filetype reading $size chars from $buff,
+    returning True (and the data read) if can be managed by BeautifulSoup,
+    False (and the data read) otherwise.
+    """
+    if not re.match('^(html|xml)',
+                    magic.from_buffer(data := buff.read(size)),
+                    re.I):
+        return False, data
+    return True, data
 
-def get_data(opener, url, parser):
+def get_data (opener, url, parser) -> (bool, [BeautifulSoup|FakeBS]):
+    """
+    Tries to read from $url using $opener and (for BeautifulSoup) $parser,
+    returns a bool indicating success or failure
+    and a BeautifulSoup or FakeBS object.
+    """
     bs = result = False
     try:
         with opener.open(url) as f:
-            bs = BeautifulSoup(f, parser)
+            ok, data = check_for_beauty(f)
+            if ok:
+                bs = BeautifulSoup(data + f.read(), parser)
+            else:
+                bs = FakeBS(data + f.read())
             result = True
     except URLError as err:
         bs = err
     return result, bs
 
 
-def writefile(outfile, bsdata):
+def writefile (outfile, bs, encoding='utf-8') -> (bool, [int|Exception]):
+    """
+    Writes the $bs object (a BeautifulSoup or FakeBS instance) to $outfile
+    with the give $encoding (default: utf-8).
+    Returns a bool indicating success or failure and the amount
+    of data written (or the exception raised trying).
+    """
     try:
-        with open(outfile, 'w') as out:
-            written = out.write(bsdata.prettify())
+        with open(outfile, 'wb') as out:
+            if isinstance(data := bs.prettify(), str):
+                written = out.write(data.encode(encoding))
+            else:
+                written = out.write(data)                
             return True, written
     except PermissionError as err:
         return False, err
 
 
 def doit(opener, url, dest, parser_name, regex, replacement, extension):
+    """
+    Do the job.
+    """
     ok, data = get_data(opener, url, parser_name)
     if not ok:
         print(data)
@@ -101,7 +149,7 @@ def doit(opener, url, dest, parser_name, regex, replacement, extension):
         dest = os.path.join(dest, data.title)
         if extension is not None:
             dest += extension
-        else:
+        elif not isinstance(data, FakeBS):
             dest += EXTENSIONS[data.is_xml]
     ok, val = writefile(dest, data)
     if not ok:
@@ -153,11 +201,14 @@ def get_parser():
                         action='version', version=f'{VERSION}')
     # positional:
     parser.add_argument('url',
-                        metavar='URL', help='''Retrieve %(metavar)s.''')
+                        metavar='URL',
+                        help='''Retrieve %(metavar)s.''')
     parser.add_argument('dest',
                         nargs='?', default=None, metavar='DEST',
                         help='''Save on %(metavar)s. If a directory, uses by
                         default the input data's title tag for the filename.
+                        If a path to a new regular file, use that ignoring
+                        the value of the -e option.
                         If not provided, write on stdout.''')
     return parser
 
