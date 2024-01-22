@@ -74,7 +74,8 @@ MAXSIZE = sys.maxsize
 REPORT_ALL = 'all'
 REPORT_ONLY = 'only'
 NO_REPORT = ''
-
+PSW_CHR_LENGTH = 25
+PSW_WRD_LENGTH = 8
 
 ########################
 # GENERATION FUNCTIONS #
@@ -300,9 +301,11 @@ def range_int_bound_factory (cls, minv, maxv):
 def get_parser():
     _words_from_file = '-w', '--words-from-file'
     p = argparse.ArgumentParser(description=DESCRIPTION)
-    p.add_argument('lengths', nargs='*', default=[13],
+    p.add_argument('lengths', nargs='*', default=[],
                     type=int, metavar='LENGTH',
-                    help='password(s) length, default: 13')
+                    help=f'''password(s) length. If not provided, sets to
+                    {PSW_CHR_LENGTH} when using the default string generation
+                    and to {PSW_WRD_LENGTH} when using the -w option.''')
     p.add_argument('-c', '--constraint',
                    dest='constraint', action='append',
                    choices=DICT_CONSTRAINT.keys(), nargs='+',
@@ -310,11 +313,13 @@ def get_parser():
                    forcing to include chars from the DIG (digits), UPPER
                    (uppercase ascii), LOWER (lowercase ascii) or PUNCT
                    (punctuation) sets, or any combinations of them.
-                   Ignored when used in conjunction with the -C option. ''')
+                   NOTE: ignored when used in conjunction with the -C option
+                   or with the -w option.''')
     p.add_argument('-C', '--all-constraint',
                    dest='all_constraints', action='store_const',
                    const=[DICT_CONSTRAINT.keys()],
-                   help='Use all the constraints available for the -c option.')
+                   help='''Use all the constraints available for the -c option.
+                   NOTE: ignored when used together the -w option.''')
     p.add_argument('-d', '--distinct', dest='uniq', action='store_true',
                    help='Generates password without repeated characters')
     p.add_argument('-t', '--times', dest='times',
@@ -325,9 +330,9 @@ def get_parser():
     p.add_argument(*_words_from_file, #'-w', '--words-from-file',
                    dest='words', metavar='FILE',
                    help='''Generates password using words from %(metavar)s.
-                   If %(metavar)s is "-" read words from stdin.'
-                   NOTE: using this option together the -C or -c options works
-                   as expected, albeit not desired.''')
+                   If %(metavar)s is "-" read words from stdin.
+                   NOTE: The use of this option disable the -C and -c options.
+                   ''')
     p.add_argument('-v', '--version', action='version', version=VERSION)
     wp = p.add_argument_group('password from words specific options')
     wp.add_argument('-l', '--word-length',
@@ -348,20 +353,27 @@ def get_parser():
                         password using the {} option (default: "%(default)s").
                         '''.format('/'.join(_words_from_file)))
     report = p.add_argument_group('I/O and report options')
-    report.add_argument('-o', '--output', dest='out', default='', metavar='FILE',
-                   help='Outputs on %(metavar)s (default: stdout)')
-    report.add_argument('-R', '--report', dest='report', nargs='?',
-                   default=NO_REPORT, choices=(REPORT_ALL, REPORT_ONLY),
-                   help="""Also runs test and report info about the generation.
-                   Optional parameter '{r_all}' prints also the string already
-                   produced, '{r_only}' doesn't (the option alone means '{r_only}')
-                   """.format(r_all=REPORT_ALL, r_only=REPORT_ONLY))
+    report.add_argument('-o', '--output',
+                        dest='out', default='', metavar='FILE',
+                        help='Outputs on %(metavar)s (default: stdout)')
+    report.add_argument('-R', '--report',
+                        dest='report', nargs='?',
+                        default=NO_REPORT, choices=(REPORT_ALL, REPORT_ONLY),
+                        help=f"""Also runs test and report info about
+                        the generation. Optional parameter '{REPORT_ALL}'
+                        prints also the string already produced (the option
+                        alone means '{REPORT_ONLY}')""")
     return p
 
 if __name__ == '__main__':
     p = get_parser()
     args = p.parse_args()
-    CONSTR = 0
+    if not args.lengths:
+        if args.words:
+            args.lengths = [PSW_WRD_LENGTH]
+        else:
+            args.lengths = [PSW_CHR_LENGTH]
+    constr = 0
     __constr = set()
     __minlen = min(args.lengths)
     if __minlen < 1:
@@ -370,12 +382,14 @@ if __name__ == '__main__':
         __constr.update(lst)
     if __constr:
         if len(__constr) > __minlen:
-            p.error('Insufficient length to satisfy constraints: {}'.format(__minlen))
+            p.error(f'Insufficient length to satisfy constraints: {__minlen}')
         for c in __constr:
-            CONSTR |= DICT_CONSTRAINT[c]
+            constr |= DICT_CONSTRAINT[c]
     if args.words:
+        constr = 0
         try:
-            SYMBOLS = tuple(set(get_words(args.words, args.word_rlen, args.max_words)))
+            SYMBOLS = tuple(set(
+                get_words(args.words, args.word_rlen, args.max_words)))
             if not SYMBOLS:
                 p.error("Not enough symbols")
         except Exception as e:
@@ -389,13 +403,15 @@ if __name__ == '__main__':
         out = open(args.out, 'w')
     if args.report != NO_REPORT:
         generated = list(
-            gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq, SEP, CONSTR))
+            gen(SYMBOLS, args.lengths, args.times,
+                urandom, args.uniq, SEP, constr))
         print_report(generated, SYMBOLS, out=out)
         if args.report == REPORT_ALL:
             for g in generated:
                 print(g, file=out)
     else:
-        for x in gen(SYMBOLS, args.lengths, args.times, urandom, args.uniq, SEP, CONSTR):
+        for x in gen(SYMBOLS, args.lengths, args.times,
+                     urandom, args.uniq, SEP, constr):
             print(x, file=out)
     if out != sys.stdout:
         out.close()
