@@ -1,0 +1,111 @@
+## based on: https://github.com/scopatz/nanorc/blob/master/kotlin.nanorc
+##
+##
+################ ORIGINAL COPYRIGHT NOTICE #################################
+##
+##    nano run control files
+##    Copyright (C) 2014+ Anthony Scopatz et al.
+##
+##    This program is free software: you can redistribute it and/or modify
+##    it under the terms of the GNU General Public License as published by
+##    the Free Software Foundation, either version 3 of the License, or
+##    (at your option) any later version.
+##
+##    This program is distributed in the hope that it will be useful,
+##    but WITHOUT ANY WARRANTY; without even the implied warranty of
+##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##    GNU General Public License for more details.
+##
+##    You should have received a copy of the GNU General Public License
+##    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+##
+##
+## Nano syntax file
+## Language:     Kotlin
+## Maintainer:   Bjarne Holen <bjarneholen@gmail.com>
+## Edited by:    Ritiek Malhotra <ritiekmalhotra123@gmail.com>
+## Last Change:  2017 May 24
+## Copyright (c) 2014, Bjarne Holen
+##
+##
+###########################################################################
+##
+## Re-edit: 2024-01-24, Marco Chieppa | crap0101:
+##
+## CHANGES:
+## * general sort
+## * change color associations
+## * changes regex for numbers
+## * add highlight for long and unigned literals
+## * add a bunch of hard/soft keywords and modifiers
+## * add highlight for multiline strings
+## * add highlight for Char literals
+## * add highlight for basic types
+## * add highlight for bitwise operators
+##
+###########################################################################
+
+syntax "kotlin" "\.kt$" "\.kts$"
+
+## ANNOTATIONS / LABELS
+color rosy "\b[a-zA-Z_][a-zA-Z0-9_]*@"
+color rosy "\s?@[a-zA-Z_][a-zA-Z0-9_]*(:\[?[a-zA-Z_][a-zA-Z0-9_]*)?\b\]?"
+
+## NUMBERS
+## XXX: to be fixed as possible, part of the problem is due to
+##      file parsing and the way regexes are applied.
+##      Wrong matches: '0.1.2', '1e3.3', '0xAA3.4', '0xFF.3', '0b00.1'
+## int/float/exadecimal/binary
+color magenta "\b((((0|[1-9]|[1-9][0-9_]*[0-9])(\.([0-9]|[0-9_]*[0-9]))?)|(0x[1-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?))(e[0-9_]*[0-9])?|(0b[01]([01_]*[01])?))([uU]|[lL]|[fF]|[uU][lL]|[lL][uU]|[uU][fF]|[lL][fF]|[fF][uU]|[fF][lL]|[ufl]|[uU][fF][lL]|[uU][lL][fF]|[fF][uU][lL]|[fF][lL][uU]|[lL][uU][fF]|[lL][fF][uU])?\b"
+
+## OPERATORS AND SPECIAL SYMBOLS ( "_" not used, "@" used in annotations/labels)
+color yellow "[.:;,+*|=!\%]" "<" ">" "/" "-" "&" "\?"
+## bitwise
+#color slate "\<(and|inv|or|shl|shr|ushr|xor)\>"
+color lagoon "\<(and|inv|or|shl|shr|ushr|xor)\>"
+## keywords
+color blue "\<(class)\>"
+color blue "\<(interface|object)\>"
+color blue "\<(package)\>"
+color blue "\<(super|this|trait|type)\>"
+color plum "\<(as|is)\>"
+color mauve "\<(fun|val|var|when)\>"
+color orange "\<(true|false|null)\>"
+color purple "\<(namespace)\>"
+color red "\<(break|continue|throw)\>"
+color brick "\<(do|else|for|if|in|repeat|return|try|while)\>"
+color brightred "\<(outer)\>"
+color slate "\<(typealias|typeof)\>"
+## soft keywords
+color latte "\<(by|catch|constructor|delegate|dynamic|field|finally|file)\>"
+color latte "\<(get|import|init|param|property|receiver)\>"
+color latte "\<(set|setparam|value|where)\>"
+## modifiers
+color brightblue "\<(abstract|actual|annotation|companion|const)\>"
+color brightblue "\<(crossinline|data|enum|expect|external|final)\>"
+color brightblue "\<(infix|inline|inner|internal|lateinit|noninline)\>"
+color brightblue "\<(open|operator|out|override|private|protected|public)\>"
+color brightblue "\<(reified|sealed|suspend|tailrec|vararg)\>"
+## special
+color slate "\<(it)\>"
+
+## BASIC TYPES
+color sea "\<(Array|Boolean|Byte|Char|Double|Float|Int|Long|Short|String)\>"
+color sea "\<(UByte|UByteArray|UInt|UIntArray|ULong|ULongArray|UShort|UShortArray)\>"
+
+## STRING HIGHLIGHTING.  You will in general want your comments and
+## strings to come last, because syntax highlighting rules will be
+## applied in the order they are read in.
+color brightblue "<[^= 	]*>" ""(\\.|[^"])*""
+
+## MULTILINE STRINGS
+color lightblue start=" \"\"\"" end="\"\"\"[\s]?"
+## bytes
+color orange " '[a-zA-Z0-9\\'"$]+'"
+
+## COMMENT HIGHLIGHTING
+color red "^\s*//.*"
+color red start="^\s*/\*" end="\*/"
+
+## TRAILING WHITESPACE
+color ,green "[[:space:]]+$"
