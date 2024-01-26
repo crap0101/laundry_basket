@@ -88,6 +88,8 @@ color brightblue "\<(open|operator|out|override|private|protected|public)\>"
 color brightblue "\<(reified|sealed|suspend|tailrec|vararg)\>"
 ## special
 color slate "\<(it)\>"
+##
+color brick "\<(downTo|step)\>"
 
 ## BASIC TYPES
 color sea "\<(Array|Boolean|Byte|Char|Double|Float|Int|Long|Short|String)\>"
@@ -100,8 +102,8 @@ color brightblue "<[^= 	]*>" ""(\\.|[^"])*""
 
 ## MULTILINE STRINGS
 color lightblue start=" \"\"\"" end="\"\"\"[\s]?"
-## bytes
-color orange " '[a-zA-Z0-9\\'"$]+'"
+## BYTES
+color red " '[a-zA-Z0-9\\'"$]+'"
 
 ## COMMENT HIGHLIGHTING
 color red "^\s*//.*"
