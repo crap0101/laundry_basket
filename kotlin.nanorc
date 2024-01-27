@@ -56,7 +56,7 @@ color rosy "\s?@[a-zA-Z_][a-zA-Z0-9_]*(:\[?[a-zA-Z_][a-zA-Z0-9_]*)?\b\]?"
 ##      file parsing and the way regexes are applied.
 ##      Wrong matches: '0.1.2', '1e3.3', '0xAA3.4', '0xFF.3', '0b00.1'
 ## int/float/exadecimal/binary
-color magenta "\b((((0|[1-9]|[1-9][0-9_]*[0-9])(\.([0-9]|[0-9_]*[0-9]))?)|(0x[1-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?))(e[0-9_]*[0-9])?|(0b[01]([01_]*[01])?))([uU]|[lL]|[fF]|[uU][lL]|[lL][uU]|[uU][fF]|[lL][fF]|[fF][uU]|[fF][lL]|[ufl]|[uU][fF][lL]|[uU][lL][fF]|[fF][uU][lL]|[fF][lL][uU]|[lL][uU][fF]|[lL][fF][uU])?\b"
+color magenta "\b((((0|[1-9]|[1-9][0-9_]*[0-9])(\.([0-9]|[0-9_]*[0-9]))?)|(0x[0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?))(e[0-9_]*[0-9])?|(0b[01]([01_]*[01])?))([uU]|[lL]|[fF]|[uU][lL]|[lL][uU]|[uU][fF]|[lL][fF]|[fF][uU]|[fF][lL]|[ufl]|[uU][fF][lL]|[uU][lL][fF]|[fF][uU][lL]|[fF][lL][uU]|[lL][uU][fF]|[lL][fF][uU])?\b"
 
 ## OPERATORS AND SPECIAL SYMBOLS ( "_" not used, "@" used in annotations/labels)
 color yellow "[.:;,+*|=!\%]" "<" ">" "/" "-" "&" "\?"
