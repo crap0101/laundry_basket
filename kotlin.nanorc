@@ -106,7 +106,8 @@ color lightblue start=" \"\"\"" end="\"\"\"[\s]?"
 color red " '[a-zA-Z0-9\\'"$]+'"
 
 ## COMMENT HIGHLIGHTING
-color red "^\s*//.*"
+color red start="(^|\s+)//.*" end="$"
+# "(^.*\s//.*$|//.*$)"
 color red start="^\s*/\*" end="\*/"
 
 ## TRAILING WHITESPACE
