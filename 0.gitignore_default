@@ -1,0 +1,9 @@
+build/
+dist/
+sdist/
+__pycache__/
+*.py[co]
+*~
+*.a
+*.o
+*.so
