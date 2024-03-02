@@ -1,7 +1,4 @@
 #!/bin/bash
-#
-# author: Marco Chieppa | crap0101
-#
 
 
 if [ $# -eq 0 ]
@@ -14,26 +11,26 @@ fi
 
 for arg in "$@"
 do
-    duration="$(mediainfo "$arg" | grep -m1 ^Dur)"
-    printf "%s\t$(basename "$arg")\n" "$duration" 
+    duration=$(mediainfo --Inform="Audio;%Duration%" "$arg")
+    printf "%s\t$(basename "$arg")\n" "$duration"
 done | gawk '
     BEGIN {
         secs = 0
         mins = 0
     }
+    $1 ~ /[0-9]+/ {
+	s = $1 / 1000
+        mins += track_m = s / 60
+        secs += track_s = s % 60
+	$1 = ""
+	printf("%02d:%02d\t%s\n", track_m, track_s, $0)
+	next
+    }
     {
-        if  (match($0, /([0-9]+)mn\s+([0-9]+)s\t(.*)$/, arr) != 0) {
-            mins += arr[1]
-            secs += arr[2]
-            printf ("%02d:%02d\t%s\n", arr[1], arr[2], arr[3])
-        } else if (match($0, /([0-9]+)s\t(.*)$/, arr) != 0) {
-            secs += arr[1]
-            printf ("00:%02d\t%s\n",  arr[1], arr[2])
-        } else
-            print "ERROR: Malformed time: " $0
+        printf("ERROR: Malformed time: <%s>\n", $1)
     }
     END {
         mins += secs/60
         secs = secs%60
-        printf "Total Time: %02d:%02d\n", mins, secs
+        printf("Total Time: %02d:%02d\n", mins, secs)
     }'
