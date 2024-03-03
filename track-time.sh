@@ -15,11 +15,11 @@ do
     printf "%s\t$(basename "$arg")\n" "$duration"
 done | gawk '
     BEGIN {
-        secs = 0
-        mins = 0
+        tot_secs = 0
     }
     $1 ~ /[0-9]+/ {
 	s = $1 / 1000
+	tot_secs += s
         mins += track_m = s / 60
         secs += track_s = s % 60
 	$1 = ""
@@ -30,7 +30,5 @@ done | gawk '
         printf("ERROR: Malformed time: <%s>\n", $1)
     }
     END {
-        mins += secs/60
-        secs = secs%60
-        printf("Total Time: %02d:%02d\n", mins, secs)
+        printf("Total Time: %02d:%02d\n", tot_secs / 60, tot_secs % 60)
     }'
