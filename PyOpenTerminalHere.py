@@ -6,7 +6,7 @@
 # Tested on MATE caja 1.24.0, lxterminal 0.3.2
 # Non-essential requirement: Zenity
 
-# Copyright (C) 2009-2015  Marco Chieppa ( a.k.a. crap0101 )
+# Copyright (C) 2009-2024  Marco Chieppa ( a.k.a. crap0101 )
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,10 @@
 import os
 import re
 import sys
-import urllib
+try:
+    from urllib import unquote
+except ImportError:
+    from urllib.parse import unquote
 
 def die_bad (strerr, prologue="Unable to open "):
     error_msg = [
@@ -35,7 +38,7 @@ def die_bad (strerr, prologue="Unable to open "):
 
 def open_terminal ():
     pattern = '^file://'
-    path_to_open = urllib.unquote(
+    path_to_open = unquote(
         os.getenv("NAUTILUS_SCRIPT_SELECTED_FILE_PATHS", ''
             ).split("\n")[0].strip()
     )
@@ -43,10 +46,10 @@ def open_terminal ():
         path_to_open = os.getenv("NAUTILUS_SCRIPT_CURRENT_URI", '')
         if path_to_open.startswith("trash"):
             path_to_open = os.path.join(
-                urllib.unquote(os.getenv("HOME")), '.local/share/Trash/files')
+                unquote(os.getenv("HOME")), '.local/share/Trash/files')
         else:
             try:
-                path_to_open = urllib.unquote(
+                path_to_open = unquote(
                     os.path.abspath(path_to_open.split(":")[1].strip()))
             except IndexError:
                 path_to_open = ''
