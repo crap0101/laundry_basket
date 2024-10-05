@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # author: Marco Chieppa | crap0101
 #
@@ -10,28 +10,30 @@ import os
 #
 import lz4.block
 
-BROWSERS = ('firefox', 'iceweasel', 'abrowser')
-DEFAULT_BROWSER = 'firefox'
-#TODO: check those paths
-SUBPATH = '*.default/sessionstore-backups/recovery.jsonlz4'
-BASEPATH = {'clean': '~/.mozilla/{browser}/{subpath}',
-            'snap':'~/snap/firefox/common/.mozilla/{browser}/{subpath}'}
-DESCRIPTION='''List open urls in current(s) browser session.'''
+DEFAULT_BROWSER = 'firefox' # eg: 'firefox', 'iceweasel', 'abrowser'
+BROWSER_FLAVOUR_SUBPATH = '*.default-esr' # eg: '*.default', '*.default-release', '*.default-esr'
+RECOVERY_SUBPATH = 'sessionstore-backups/recovery.jsonlz4'
+TARGET_PATH = '~/.mozilla/{browser}/{flavour}/{recovery_subpath}'
+DESCRIPTION = '''List open urls in current browser session.'''
 
 def get_args (args=None):
     p = argparse.ArgumentParser(description=DESCRIPTION)
     p.add_argument('-b', '--browser',
                    dest='browser', default=DEFAULT_BROWSER,
-                   choices=BROWSERS, help='browser name.')
+                   help='browser name (%(default)s).')
+    p.add_argument('-B', '--browser-flavour',
+                   dest='flavour', default=BROWSER_FLAVOUR_SUBPATH,
+                   help="browser's flavour path location: (%(default)s).")
     p.add_argument('-d', '--no-decompress',
                    dest='no_decompress', action='store_true',
-                   help="if config file is an (old) plain text file.")
-    p.add_argument('-p', '--basepath',
-                   dest='basepath', choices=(BASEPATH.keys()),
-                   default='snap', help="browser's session basepath location.")
+                   help="for old recovery files which was plain text.")
+    p.add_argument('-f', '--file',
+                   dest='recovery_file_fullpath',
+                   help="""browser's session recovery file, fullpath.
+                   With this options -b, -B and -s options will be ignored.""")
     p.add_argument('-s', '--subpath',
-                   dest='subpath', default=SUBPATH,
-                   help="browser's session file path location: (%(default)s).")
+                   dest='recovery_subpath', default=RECOVERY_SUBPATH,
+                   help="browser's session file subpath location: (%(default)s).")
     return p.parse_args(args)
 
 def current_tabs_url (path, decompress):
@@ -45,17 +47,24 @@ def current_tabs_url (path, decompress):
     windows = data['windows']
     for win in windows:
         for tab in win['tabs']:
-            yield tab['entries'][-1]['url']
-
+            try:
+                yield tab['entries'][-1]['url']
+            except IndexError:
+                # No entries, maybe moz-extension or other stuff
+                pass
 
 if __name__ == '__main__':
     args = get_args()
-    path_fmt = BASEPATH[args.basepath]
-    session_file = path_fmt.format(
-        browser=args.browser, subpath=args.subpath)
+    if args.recovery_file_fullpath:
+        session_file = args.recovery_file_fullpath
+    else:
+        session_file = TARGET_PATH.format(
+            browser=args.browser,
+            flavour=args.flavour,
+            recovery_subpath=args.recovery_subpath)
     try:
         path = glob.glob(os.path.expanduser(session_file))[0]
-    except IndexError:
-        raise OSError("can't find {}".format(os.path.expanduser(session_file)))
+    except (IndexError, OSError):
+        raise OSError("can't find {}".format(session_file)) from None
     for url in current_tabs_url(path, not args.no_decompress):
         print(url)
