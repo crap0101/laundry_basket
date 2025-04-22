@@ -13,7 +13,6 @@ function help (progname, progversion) {
 	   "USAGE: %%prog [OPTIONS] [file1, file2 ...]" "\n"	\
 	   "  -m MAXLEN, --maxlen=MAXLEN" "\n"					\
 	   "    Lines longer than MAXLEN will be printed (MAXLEN default to 79)." "\n" \
-	   "    Invalid arguments are silently converted to 0 (uses: strtonum(MAXLEN))." "\n" \
 	   "  -o, --only-num" "\n"					\
 	   "    Prints only the line numbers at witch the longer lines are found." "\n" \
 	   "  -l, --only-line" "\n"					\
@@ -27,7 +26,7 @@ function help (progname, progversion) {
 	   "    A (and only one) conversion specifications like %%s can be used" "\n" \
            "    for printing the current filename." "\n" \
 	   "" "\n"							\
-	   "  Default output format is: \"line_number:line_len;line\"" "\n"	\
+	   "  Default output format is: \"line_number:line_len:line\"" "\n"	\
 	   "  Options -o,-l,-f are mutually exclusive." "\n",
 	   progname, progversion)
     awkpot::set_end_exit(0)
@@ -49,6 +48,10 @@ function parse_command_line() {
     while ((c = getopt(ARGC, ARGV, shortopts, longopts)) != -1)
 	switch (c) {
 	    case "m": case "maxlen":
+		if ( Optarg !~ /^[0-9]+$/) {
+		    printf("%s: Wrong value for maxlen: <%s>\n", ARGV[0], Optarg) >> "/dev/stderr"
+		    exit(1)
+		}
 		maxlen = strtonum(Optarg)
 		break
 	    case "o": case "only-num":
