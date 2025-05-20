@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 # Name: ugenpass
-# Version: 1.1
+# Version: 1.2
 # Author: Marco Chieppa ( a.k.a. crap0101 )
-# Last Update: 2024-01-18
+# Last Update: 2024-05-20
 # Description: password generator
 # Requirement: Python >= 2.7
 
@@ -41,7 +41,12 @@ import random
 import string
 import sys
 import time
-
+try:
+    import secrets
+    __choice = secrets.choice
+except ImportError as imp_err:
+    __choice = random.choice
+    sys.stderr.write('{}: {revert to the random module}'.format(e))
 if sys.version_info.major > 2:
     def urandom (n, chr_range=256):
         a, b = pair_from_time()
@@ -110,7 +115,7 @@ def gen (symbols, lengths, times,
                 while True:
                     ok, mask = check_constraint(x, constraint)
                     if not ok:
-                        x = list(x[1:]) + list(random.choice(list(mask)))
+                        x = list(x[1:]) + list(__choice(list(mask)))
                     else:
                         break
             yield sep.join(x)
@@ -156,7 +161,7 @@ def pair_from_time ():
     a = int(t)
     b = int((t - a) * 1000)
     if b == 0:
-        b = random.randrange(10000) ^ int(time.time())
+        b = __choice(range(10000)) ^ int(time.time())
     return a, b
 
 
