@@ -41,10 +41,12 @@ def get_parser():
 if __name__ == '__main__':
     parser = get_parser()
     parsed = parser.parse_args()
-    #print(parsed)###########
     if not parsed.files:
         parsed.files.append('-')
     for file in parsed.files:
-        with (open(file) if file != '-' else sys.stdin) as f:
-            for m in matching_lines(f, parsed.pattern, parsed.re_flags, parsed.matching_func):
-                print(m.string, end='')
+        try:
+            with (open(file) if file != '-' else sys.stdin) as f:
+                for m in matching_lines(f, parsed.pattern, parsed.re_flags, parsed.matching_func):
+                    print(m.string, end='')
+        except ValueError as e:
+            print(f"{parser.prog}: ERROR with file {file}: {e}", file=sys.stderr)
