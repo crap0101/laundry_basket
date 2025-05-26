@@ -48,5 +48,5 @@ if __name__ == '__main__':
             with (open(file) if file != '-' else sys.stdin) as f:
                 for m in matching_lines(f, parsed.pattern, parsed.re_flags, parsed.matching_func):
                     print(m.string, end='')
-        except ValueError as e:
+        except (ValueError,PermissionError) as e:
             print(f"{parser.prog}: ERROR with file {file}: {e}", file=sys.stderr)
