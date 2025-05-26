@@ -6,12 +6,19 @@ import re
 import sys
 
 MATCHING_FUNCS = ('match', 'search')
+PATTERN = 'PATTERN'
 
-def matching_lines (stream, pattern, flags=0, match_func="search"):
-    is_match = getattr(re.compile(pattern, flags=flags), match_func)
-    for elem in stream:
-        if m := is_match(elem):
-            yield m
+def fixed_string_match (pattern):
+    def match_line (line):
+        return pattern in line
+    return match_line
+
+def matching_lines (stream, match_funcs):
+    for idx, elem in enumerate(stream, start=1):
+        for f in match_funcs:
+            if m := f(elem):
+                yield idx, elem
+                break
 
 class SetFlag(argparse.Action):
     def __init__(self, *a, **k):
@@ -25,28 +32,62 @@ def get_parser():
     parser = argparse.ArgumentParser(prog=sys.argv[0])
     parser.add_argument('-a', '--ascii-match',
                         dest='re_flags', action=SetFlag, default=0, const=re.A,
-                        help="perform ASCII-only matching instead of full Unicode matching.")
+                        help="Perform ASCII-only matching instead of full Unicode matching.")
+    parser.add_argument('-e', '--regexp',
+                        dest='extra_patterns', action='append', default=[], metavar=PATTERN,
+                        help='''Others patterns to be matched.
+                        NOTE: any patterns which match makes the given line a matching line.''')
+    parser.add_argument('-F', '--fixed-strings',
+                        dest='fixed_strings', action='store_true',
+                        help=f'Interpret any {PATTERN} as fixed strings, not regular expressions.')
     parser.add_argument('-i', '--ignore-case',
                         dest='re_flags', action=SetFlag, default=0, const=re.I,
                         help="Perform case-insensitive matching.")
     parser.add_argument('-m', '--multiline',
                         dest='re_flags', action=SetFlag, default=0, const=re.M)
     parser.add_argument('-M', '--matching-function',
-                        dest='matching_func', choices=MATCHING_FUNCS, default='search')
-    parser.add_argument('pattern')
+                        dest='matching_func', choices=MATCHING_FUNCS, default='search',
+                        help='''Regex matching function (python's re.match or re.search).''')
+    parser.add_argument('-n', '--line-number',
+                        dest='line_number', action='store_true',
+                        help='''Prefix each line of output with the 1-based line number
+                        within its input file.''')
+    parser.add_argument('-v', '--invert-match',
+                        dest='invert', action='store_true',
+                        help='''Invert the sense of matching, to select non-matching lines.
+                        NOTE: works when there's one pattern only present at command line.''')
+    parser.add_argument('pattern', metavar=PATTERN, help='regex pattern to match')
     parser.add_argument('files', nargs='*')
     return parser
 
 
 if __name__ == '__main__':
+    __errors = 0
     parser = get_parser()
     parsed = parser.parse_args()
+    if parsed.line_number:
+        __print = lambda n, l, e: print(f'{n}:{l}', end=e)
+    else:
+        __print = lambda n, l, e: print(l, end=e)
     if not parsed.files:
         parsed.files.append('-')
+    __patterns = parsed.extra_patterns
+    __patterns.append(parsed.pattern)
+    __matching_funcs = []
+    if parsed.fixed_strings:
+        for p in __patterns:
+            __matching_funcs.append(fixed_string_match(p))
+    else:
+        for p in __patterns:
+            __matching_funcs.append(getattr(re.compile(p, flags=parsed.re_flags), parsed.matching_func))
+    if parsed.invert:
+        __matching_funcs = [lambda arg: not f(arg) for f in __matching_funcs]
     for file in parsed.files:
         try:
             with (open(file) if file != '-' else sys.stdin) as f:
-                for m in matching_lines(f, parsed.pattern, parsed.re_flags, parsed.matching_func):
-                    print(m.string, end='')
-        except (ValueError,PermissionError) as e:
+                for line_num, m in matching_lines(f, __matching_funcs):
+                    __print(line_num, m, '')
+        except (ValueError, PermissionError, FileNotFoundError) as e:
             print(f"{parser.prog}: ERROR with file {file}: {e}", file=sys.stderr)
+            __errors += 1
+    sys.exit(__errors)
