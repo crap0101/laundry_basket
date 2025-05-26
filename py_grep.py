@@ -43,11 +43,17 @@ def get_parser():
     parser.add_argument('-i', '--ignore-case',
                         dest='re_flags', action=SetFlag, default=0, const=re.I,
                         help="Perform case-insensitive matching.")
-    parser.add_argument('-m', '--multiline',
-                        dest='re_flags', action=SetFlag, default=0, const=re.M)
+    # line-oriented, not used:
+    #parser.add_argument('-m', '--multiline',
+    #                    dest='re_flags', action=SetFlag, default=0, const=re.M)
     parser.add_argument('-M', '--matching-function',
                         dest='matching_func', choices=MATCHING_FUNCS, default='search',
                         help='''Regex matching function (python's re.match or re.search).''')
+    parser.add_argument('-m', '--max-count',
+                        dest='max_count', type=int, default=-1, metavar='NUM',
+                        help='''Stop reading a file after %(metavar)s matching lines.
+                        When the -v/--invert-match option is also used, stops after
+                        outputting %(metavar)s non-matching lines.''')
     parser.add_argument('-n', '--line-number',
                         dest='line_number', action='store_true',
                         help='''Prefix each line of output with the 1-based line number
@@ -85,8 +91,10 @@ if __name__ == '__main__':
     for file in parsed.files:
         try:
             with (open(file) if file != '-' else sys.stdin) as f:
-                for line_num, m in matching_lines(f, __matching_funcs):
+                for match_num, (line_num, m) in enumerate(matching_lines(f, __matching_funcs), start=1):
                     __print(line_num, m, '')
+                    if match_num == parsed.max_count:
+                        break
         except (ValueError, PermissionError, FileNotFoundError) as e:
             print(f"{parser.prog}: ERROR with file {file}: {e}", file=sys.stderr)
             __errors += 1
