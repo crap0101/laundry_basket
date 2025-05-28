@@ -46,9 +46,11 @@ def standard_search (infile, matching_funcs, max_count, format_print): #print_fu
             if match_num == max_count:
                 break
 
-def pattern_from_file (path):
+def pattern_from_file (path, strip=True):
     with open(path) as f:
-        return list(line.strip() for line in f)
+        if strip:
+            return list(line.strip() for line in f)
+        return list(f.read().splitlines())
 
 def fixed_string_match (pattern):
     def match_line (line):
@@ -79,13 +81,13 @@ def get_parser():
                         dest='extra_patterns', action='append', default=[], metavar=PATTERN,
                         help='''Others patterns to be matched.
                         NOTE: any patterns which match makes the given line a matching line.''')
-    parser.add_argument('-F', '--fixed-strings',
-                        dest='fixed_strings', action='store_true',
-                        help=f'Interpret any {PATTERN} as fixed strings, not regular expressions.')
     parser.add_argument('-f', '--file',
                         dest='from_file', metavar='FILE',
                         help='''Obtain patterns from FILE, one per line.
                         Leading and trailing whitespaces are stripped from the patterns.''')
+    parser.add_argument('-F', '--file-no-strip',
+                        dest='from_file_no_strip', metavar='FILE',
+                        help='Like -f but not strip leading and trailing whitespaces except the newlines.')
     parser.add_argument('-H', '--with-filename',
                         dest='with_filename', action='store_true',
                         help='Print the file name for each match.')
@@ -115,6 +117,9 @@ def get_parser():
                         dest='line_number', action='store_true',
                         help='''Prefix each line of output with the 1-based line number
                         within its input file.''')
+    parser.add_argument('-S', '--fixed-strings',
+                        dest='fixed_strings', action='store_true',
+                        help=f'Interpret any {PATTERN} as fixed strings, not regular expressions.')
     parser.add_argument('-v', '--invert-match',
                         dest='invert', action='store_true',
                         help='''Invert the sense of matching, to select non-matching lines.
@@ -149,7 +154,12 @@ if __name__ == '__main__':
         __patterns.append(parsed.pattern)
     if parsed.from_file:
         try:
-            __patterns.extend(pattern_from_file(parsed.from_file))
+            __patterns.extend(pattern_from_file(parsed.from_file, True))
+        except OSError as e:
+            parser.error(e)
+    if parsed.from_file_no_strip:
+        try:
+            __patterns.extend(pattern_from_file(parsed.from_file_no_strip, False))
         except OSError as e:
             parser.error(e)
     if not __patterns:
