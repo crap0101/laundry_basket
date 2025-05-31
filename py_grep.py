@@ -13,9 +13,11 @@ PATTERNS is one or more patterns separated by newline characters,
 and py_grep prints each line that matches a pattern.'''
 
 class FormatPrint:
-    def __init__(self, use_filename=False, use_line_num=False):
+    def __init__(self, use_filename=False, use_line_num=False, zero_out=False, line_end=None):
         self._use_filename = use_filename
         self._use_line_num = use_line_num
+        self._zero_out = zero_out
+        self.line_end = line_end
     def use_filename(self, bool_value):
         self._use_filename = bool(bool_value)
     def use_line_num(self, bool_value):
@@ -23,9 +25,9 @@ class FormatPrint:
     def get_format(self):
         fmt = '{line}'
         if self._use_line_num:
-            fmt = '{line_num}:' + fmt
+            fmt = '{}:{}'.format('{line_num}', fmt)
         if self._use_filename:
-            fmt = '{filename}:' + fmt
+            fmt = '{}{}:{}'.format('{filename}', '' if not self._zero_out else '\0', fmt)
         return fmt
 
 def file_with_match(infile, matching_funcs, *others):
@@ -132,6 +134,10 @@ def get_parser():
                         dest='invert', action='store_true',
                         help='''Invert the sense of matching, to select non-matching lines.
                         NOTE: works when there's one pattern only present at command line.''')
+    parser.add_argument('-Z', '--null',
+                        dest='zero_out', action='store_true',
+                        help='''Output  a  zero  byte  (the  ASCII NUL character) instead of the
+                        character that normally follows a file name.''')
     parser.add_argument('pattern', metavar=PATTERNS,
                         help='''Default regex pattern to match.
                         To use the patterns provided with the -e or -F options only,
@@ -158,9 +164,7 @@ if __name__ == '__main__':
               ' using "--count"!',
               file=sys.stderr)
     # output formatting:
-    format_print = FormatPrint()
-    format_print.use_line_num(parsed.line_number)
-    format_print.use_filename(parsed.with_filename)
+    format_print = FormatPrint(parsed.with_filename, parsed.line_number, parsed.zero_out)
     # input files:
     if not parsed.files:
         parsed.files.append('-')
@@ -198,23 +202,21 @@ if __name__ == '__main__':
     for infile in parsed.files:
         try:
             if parsed.files_with_match:
-                _end = '\n'
                 _format = '{filename}'
                 _f = file_with_match
             elif parsed.files_without_match:
                 _f = file_without_match
-                _end = '\n'
                 _format = '{filename}'
             else:
                 _f = standard_search
-                _end = ''
+                format_print.line_end = ''
                 _format = format_print.get_format()
             if parsed.count and not (parsed.files_with_match or parsed.files_without_match):
                 print(((infile + ':') if parsed.with_filename else '')
                       + str(sum(1 for _ in _f(infile, __matching_funcs, parsed.max_count))))
             else:
                 for res in _f(infile, __matching_funcs, parsed.max_count):
-                    print(_format.format(**res), end=_end)
+                    print(_format.format(**res), end=format_print.line_end)
         except (ValueError, PermissionError, FileNotFoundError) as e:
             print(f"{parser.prog}: ERROR with file {infile}: {e}", file=sys.stderr)
             __errors += 1
