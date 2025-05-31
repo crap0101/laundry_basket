@@ -1,4 +1,6 @@
 
+# Author: Marco Chieppa
+# 2025
 # a stub... grep-like command with some enhancem....cough cough... differences
 # over the original.
 
@@ -43,13 +45,12 @@ def file_without_match(infile, matching_funcs, *others):
         else:
             yield {'filename':infile, 'line_num':0, 'line':''}
         
-def standard_search (infile, matching_funcs, max_count):#, format_print):
+def standard_search (infile, matching_funcs, max_count):
     with (open(infile) if infile != '-' else sys.stdin) as f:
-        #_format = format_print.get_format()
-        for match_num, (line_num, m) in enumerate(matching_lines(f, matching_funcs), start=1):
-            yield {'filename':infile, 'line_num':line_num, 'line':m}
-            #print(_format.format(filename=infile, line_num=line_num, line=m), end='')
-            if match_num == max_count:
+        for match_num, seq in enumerate(matching_lines(f, matching_funcs), start=1):
+            for (line_num, match) in seq:
+                yield {'filename':infile, 'line_num':line_num, 'line':match}
+            if match_num >= max_count:
                 break
 
 def pattern_from_file (path, strip=True):
@@ -64,10 +65,14 @@ def fixed_string_match (pattern):
     return match_line
 
 def matching_lines (stream, match_funcs):
+    """regex match"""
     for idx, elem in enumerate(stream, start=1):
         for f in match_funcs:
-            if m := f(elem):
-                yield idx, elem
+            if matches := f(elem):
+                if isinstance(matches, re.Match):
+                    yield [[idx, elem]]
+                else:
+                    yield [[idx, m.group()] for m in matches]
                 break
 
 # maybe excessive...
@@ -127,6 +132,11 @@ def get_parser():
                         dest='line_number', action='store_true',
                         help='''Prefix each line of output with the 1-based line number
                         within its input file.''')
+    parser.add_argument('-o', '--only-matching',
+                        dest='only_matching', action='store_true',
+                        help='''Print only the matched (non-empty) parts of a matching line,
+                        with each such part on a separate output line.
+                        NOTE: override the "-M", "--matching-function" option.''')
     parser.add_argument('-S', '--fixed-strings',
                         dest='fixed_strings', action='store_true',
                         help=f'Interpret any {PATTERNS} as fixed strings, not regular expressions.')
@@ -136,7 +146,7 @@ def get_parser():
                         NOTE: works when there's one pattern only present at command line.''')
     parser.add_argument('-Z', '--null',
                         dest='zero_out', action='store_true',
-                        help='''Output  a  zero  byte  (the  ASCII NUL character) instead of the
+                        help='''Output a zero byte (the ASCII NUL character) instead of the
                         character that normally follows a file name.''')
     parser.add_argument('pattern', metavar=PATTERNS,
                         help='''Default regex pattern to match.
@@ -150,9 +160,15 @@ if __name__ == '__main__':
     __errors = 0
     parser = get_parser()
     parsed = parser.parse_args()
+    if parsed.max_count == 0:
+        sys.exit(0) # nothing to do...
     #conflicts:
     if parsed.max_count != -1 and (parsed.files_with_match or parsed.files_without_match):
         print(f'{parser.prog}: WARNING: "--max-count" ignored when'
+              ' using "--files-with-match" or "--files-without-match"!',
+              file=sys.stderr)
+    if parsed.only_matching and (parsed.files_with_match or parsed.files_without_match):
+        print(f'{parser.prog}: WARNING: "--only-matching" ignored when'
               ' using "--files-with-match" or "--files-without-match"!',
               file=sys.stderr)
     if parsed.count and (parsed.files_with_match or parsed.files_without_match):
@@ -193,6 +209,8 @@ if __name__ == '__main__':
             __matching_funcs.append(fixed_string_match(p))
     else:
         __flags = parsed.re_flag_ascii | parsed.re_flag_nocase
+        if parsed.only_matching:
+            parsed.matching_func = 'finditer'
         for p in __patterns:
             __matching_funcs.append(getattr(re.compile(p, flags=__flags), parsed.matching_func))
     # ...
@@ -209,10 +227,12 @@ if __name__ == '__main__':
                 _format = '{filename}'
             else:
                 _f = standard_search
-                format_print.line_end = ''
+                if not parsed.only_matching:
+                    format_print.line_end = ''
                 _format = format_print.get_format()
             if parsed.count and not (parsed.files_with_match or parsed.files_without_match):
-                print(((infile + ':') if parsed.with_filename else '')
+                print(((infile + ('\0' if parsed.zero_out else '') +  ':')
+                       if parsed.with_filename else '')
                       + str(sum(1 for _ in _f(infile, __matching_funcs, parsed.max_count))))
             else:
                 for res in _f(infile, __matching_funcs, parsed.max_count):
