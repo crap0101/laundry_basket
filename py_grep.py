@@ -8,6 +8,13 @@ import argparse
 import re
 import sys
 
+# optional module filelist.py (this too from the laundry basket)
+try:
+    import filelist
+    CAN_SCANDIR = True
+except ImportError:
+    CAN_SCANDIR = False
+
 MATCHING_FUNCS = ('match', 'search')
 PATTERNS = 'PATTERNS'
 DESCRIPTION = '''Searches for PATTERNS in each FILE.
