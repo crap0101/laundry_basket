@@ -69,9 +69,11 @@ def matching_lines (stream, match_funcs):
     for idx, elem in enumerate(stream, start=1):
         for f in match_funcs:
             if matches := f(elem):
-                if isinstance(matches, re.Match):
+                if isinstance(matches, (re.Match, bool)):
+                    # re.XXX functions and fixed_strings_match
                     yield [[idx, elem]]
                 else:
+                    # finditer
                     yield [[idx, m.group()] for m in matches]
                 break
 
@@ -136,7 +138,8 @@ def get_parser():
                         dest='only_matching', action='store_true',
                         help='''Print only the matched (non-empty) parts of a matching line,
                         with each such part on a separate output line.
-                        NOTE: override the "-M", "--matching-function" option.''')
+                        NOTE: override the "-M / --matching-function" option.
+                        NOTE: ignored when using "-S / --fixed-strings"''')
     parser.add_argument('-S', '--fixed-strings',
                         dest='fixed_strings', action='store_true',
                         help=f'Interpret any {PATTERNS} as fixed strings, not regular expressions.')
@@ -171,6 +174,9 @@ if __name__ == '__main__':
         print(f'{parser.prog}: WARNING: "--only-matching" ignored when'
               ' using "--files-with-match" or "--files-without-match"!',
               file=sys.stderr)
+    if parsed.only_matching and parsed.fixed_strings:
+        print(f'{parser.prog}: WARNING: "--only-matching" ignored when'
+              ' using "--fixed-strings"!', file=sys.stderr)
     if parsed.count and (parsed.files_with_match or parsed.files_without_match):
         print(f'{parser.prog}: WARNING: "--count" ignored when'
               ' using "--files-with-match" or "--files-without-match"!',
@@ -227,7 +233,7 @@ if __name__ == '__main__':
                 _format = '{filename}'
             else:
                 _f = standard_search
-                if not parsed.only_matching:
+                if (not parsed.only_matching) or parsed.fixed_strings:
                     format_print.line_end = ''
                 _format = format_print.get_format()
             if parsed.count and not (parsed.files_with_match or parsed.files_without_match):
