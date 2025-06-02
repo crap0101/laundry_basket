@@ -5,6 +5,8 @@
 # over the original.
 
 import argparse
+import itertools
+import os
 import re
 import sys
 
@@ -16,10 +18,15 @@ except ImportError:
     CAN_SCANDIR = False
 
 MATCHING_FUNCS = ('match', 'search')
+PROGNAME = 'py_grep'
 PATTERNS = 'PATTERNS'
 DESCRIPTION = '''Searches for PATTERNS in each FILE.
 PATTERNS is one or more patterns separated by newline characters,
-and py_grep prints each line that matches a pattern.'''
+and %(prog)s prints each line that matches a pattern.
+
+A FILE of "-" stands for standard input. If no FILE is given,
+recursive searches examine the working directory, and nonrecursive
+searches read standard input.'''
 
 class FormatPrint:
     def __init__(self, use_filename=False, use_line_num=False, zero_out=False, line_end=None):
@@ -77,10 +84,10 @@ def matching_lines (stream, match_funcs):
         for f in match_funcs:
             if matches := f(elem):
                 if isinstance(matches, (re.Match, bool)):
-                    # re.XXX functions and fixed_strings_match
+                    # for re.YYY functions and fixed_strings_match
                     yield [[idx, elem]]
                 else:
-                    # finditer
+                    # for finditer
                     yield [[idx, m.group()] for m in matches]
                 break
 
@@ -94,13 +101,18 @@ def matching_lines (stream, match_funcs):
 #         setattr(namespace, 're_flags', getattr(namespace, 're_flags') | self._const_value)
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog=sys.argv[0], description=DESCRIPTION)
+    parser = argparse.ArgumentParser(prog=PROGNAME, description=DESCRIPTION)
     parser.add_argument('-a', '--ascii-match',
                         dest='re_flag_ascii', action='store_const', default=0, const=re.A,
                         help=r"""Make \w, \W, \b, \B, \d, \D, \s and \S Perform
                         ASCII-only matching instead of full Unicode matching.""")
     parser.add_argument('-c', '--count',
                         dest='count', action='store_true')
+    parser.add_argument('-d', '--depth',
+                        dest='depth', type=int, default=float('+inf'), metavar='NUM',
+                        help='''When using the -r / --recursive option, descends %(metavar)s
+                        levels from the given path (which is at level 0). Must be >= 0.
+                        Default is a full recursive search.''')
     parser.add_argument('-e', '--regexp',
                         dest='extra_patterns', action='append', default=[], metavar=PATTERNS,
                         help='''Others patterns to be matched.
@@ -147,6 +159,11 @@ def get_parser():
                         with each such part on a separate output line.
                         NOTE: override the "-M / --matching-function" option.
                         NOTE: ignored when using "-S / --fixed-strings"''')
+    parser.add_argument('-r', '--recursive',
+                        dest='recursive', action='store_true',
+                        help='''Read all files under each directory, recursively.
+                        Note that if no file operand is given, %(prog)s searches
+                        the working directory.''')
     parser.add_argument('-S', '--fixed-strings',
                         dest='fixed_strings', action='store_true',
                         help=f'Interpret any {PATTERNS} as fixed strings, not regular expressions.')
@@ -194,9 +211,31 @@ if __name__ == '__main__':
               file=sys.stderr)
     # output formatting:
     format_print = FormatPrint(parsed.with_filename, parsed.line_number, parsed.zero_out)
+    # recursive level check:
+    if parsed.depth < 0:
+        parser.error("depth must be > 0")
     # input files:
     if not parsed.files:
-        parsed.files.append('-')
+        if parsed.recursive:
+            parsed.files = [filelist.find(os.getcwd(), parsed.depth)]
+        else:
+             parsed.files.append(['-'])
+    else:
+        if parsed.recursive:
+            flst = []
+            for p in parsed.files:
+                if os.path.isdir(p):
+                    flst.append(filelist.find(p, parsed.depth))
+                elif os.path.isfile(p):
+                    flst.append([p])
+                else:
+                    parser.error('Unknown input: {}'.format(p))
+            parsed.files = flst
+        else:
+            for p in parsed.files:
+                if os.path.isdir(p):
+                    parser.error('Is a directory: {}'.format(p))
+
     # patterns to match:
     __patterns = []
     for p in parsed.extra_patterns:
@@ -230,7 +269,7 @@ if __name__ == '__main__':
     if parsed.invert:
         __matching_funcs = [lambda arg: not f(arg) for f in __matching_funcs]
     # do it:
-    for infile in parsed.files:
+    for infile in itertools.chain(*parsed.files):
         try:
             if parsed.files_with_match:
                 _format = '{filename}'
