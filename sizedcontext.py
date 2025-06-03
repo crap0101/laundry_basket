@@ -36,13 +36,26 @@ class ContextIter:
         self._seq = seq
         self._match = match
         self._qpre = SizedQueue(ctx_pre)
-        self._qpost = SizedQueue(ctx_post)
         self._ctx_pre = ctx_pre
         self._ctx_post = ctx_post
     def __str__ (self):
         return 'ContexIter({},{},{})'.format(self._match.__name__,self._ctx_pre,self._ctx_post)
     def getctx (self):
-        post_ctx=0
+        post_ctx = 0
+        for i in self._seq:
+            if self._match(i):
+                for p in self._qpre.items():
+                    yield p
+                yield i
+                self._qpre.empty()
+                post_ctx = self._ctx_post
+            elif post_ctx:
+                yield i
+                post_ctx -= 1
+            else:
+                self._qpre.push(i)
+    def getctxcall (self):
+        post_ctx = 0
         for i in self._seq:
             if self._match(i):
                 for p in self._qpre.items():
