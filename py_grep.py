@@ -26,7 +26,9 @@ and %(prog)s prints each line that matches a pattern.
 
 A FILE of "-" stands for standard input. If no FILE is given,
 recursive searches examine the working directory, and nonrecursive
-searches read standard input.'''
+searches read standard input.
+
+Directories and recursive search needed the filelist module.'''
 
 class FormatPrint:
     def __init__(self, use_filename=False, use_line_num=False, zero_out=False, line_end=None):
@@ -217,11 +219,15 @@ if __name__ == '__main__':
     # input files:
     if not parsed.files:
         if parsed.recursive:
+            if not CAN_SCANDIR:
+                parser.error('Missing module: filelist')
             parsed.files = [filelist.find(os.getcwd(), parsed.depth)]
         else:
              parsed.files.append(['-'])
     else:
         if parsed.recursive:
+            if not CAN_SCANDIR:
+                parser.error('Missing module: filelist')
             flst = []
             for p in parsed.files:
                 if os.path.isdir(p):
