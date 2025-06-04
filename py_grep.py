@@ -31,46 +31,52 @@ searches read standard input.
 
 Directories and recursive search needed the filelist module.'''
 
+EPILOG='''EXIT STATUS
+Normally the exit status is 0 if a line is selected, 1 if no lines were
+selected, and 2 if an error occurred
+'''
 Context = namedtuple('Context', ('pre','post'))
 
 class FormatPrint:
-    def __init__(self, use_filename=False, use_line_num=False, zero_out=False, line_end=None):
+    def __init__(self, print_line=True, use_filename=False, use_line_num=False, zero_out=False, line_end=None):
+        self._print_line = print_line
         self._use_filename = use_filename
         self._use_line_num = use_line_num
         self._zero_out = zero_out
         self.line_end = line_end
+    def print_line(self, bool_value):
+        self._print_line = bool(bool_value)
     def use_filename(self, bool_value):
         self._use_filename = bool(bool_value)
     def use_line_num(self, bool_value):
         self._use_line_num = bool(bool_value)
     def get_format(self):
-        fmt = '{line}'
+        fmt = ''
+        if self._print_line:
+            fmt = '{line}'
         if self._use_line_num:
             fmt = '{}:{}'.format('{line_num}', fmt)
         if self._use_filename:
-            fmt = '{}{}:{}'.format('{filename}', '' if not self._zero_out else '\0', fmt)
+            fmt = '{}{}{}'.format('{filename}', ':' if not self._zero_out else '\0', fmt)
         return fmt
 
-def file_with_match(infile, matching_lines, matching_funcs, *others_not_used):
-    with (open(infile) if infile != '-' else sys.stdin) as f:
-        for _ in matching_lines(f, matching_funcs):
-            yield {'filename':infile, 'line_num':0, 'line':''}
-            break
+def file_with_match(stream, matching_lines, matching_funcs, *others_not_used):
+    for _ in matching_lines(stream, matching_funcs):
+        yield {'filename':infile, 'line_num':0, 'line':''}
+        break
 
-def file_without_match(infile, matching_lines, matching_funcs, *others_not_used):
-    with (open(infile) if infile != '-' else sys.stdin) as f:
-        for _ in matching_lines(f, matching_funcs):
-            break
-        else:
-            yield {'filename':infile, 'line_num':0, 'line':''}
+def file_without_match(stream, matching_lines, matching_funcs, *others_not_used):
+    for _ in matching_lines(stream, matching_funcs):
+        break
+    else:
+        yield {'filename':infile, 'line_num':0, 'line':''}
         
-def standard_search (infile, matching_lines, matching_funcs, max_count, context):
-    with (open(infile) if infile != '-' else sys.stdin) as f:
-        for match_num, seq in enumerate(matching_lines(f, matching_funcs, context), start=1):
-            for (line_num, match) in seq:
-                yield {'filename':infile, 'line_num':line_num, 'line':match}
-            if match_num >= max_count:
-                break
+def standard_search (stream, matching_lines, matching_funcs, max_count, context):
+    for match_num, seq in enumerate(matching_lines(stream, matching_funcs, context), start=1):
+        for (line_num, match) in seq:
+            yield {'filename':infile, 'line_num':line_num, 'line':match}
+        if match_num >= max_count:
+            break
 
 def pattern_from_file (path, strip=True):
     with open(path) as f:
@@ -130,6 +136,14 @@ def negate_match(funcs):
         return not any(f(pattern) for f in funcs)
     return inner_negate
 
+def from_zero_lines_input(stream):
+    for line in stream.read().split('\0'):
+        yield line
+
+def from_default_lines_input(stream):
+    for line in stream:
+        yield line.rstrip('\n')
+
 # maybe excessive...
 # class SetFlag(argparse.Action):
 #     def __init__(self, *a, **k):
@@ -140,7 +154,7 @@ def negate_match(funcs):
 #         setattr(namespace, 're_flags', getattr(namespace, 're_flags') | self._const_value)
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog=PROGNAME, description=DESCRIPTION)
+    parser = argparse.ArgumentParser(prog=PROGNAME, description=DESCRIPTION, epilog=EPILOG)
     matching = parser.add_argument_group('Matching Control')
     matching.add_argument('-a', '--ascii-match',
                         dest='re_flag_ascii', action='store_const', default=0, const=re.A,
@@ -171,7 +185,9 @@ def get_parser():
                         help=f'Interpret any {PATTERNS} as fixed strings, not regular expressions.')
     matching.add_argument('-v', '--invert-match',
                         dest='invert', action='store_true',
-                        help='''Invert the sense of matching, to select non-matching lines.''')
+                        help='''Invert the sense of matching, to select non-matching lines.
+                        NOTE: used together with --only-matching causes the exit status
+                        to be always 1 as no lines will be selected.''')
     context_control = parser.add_argument_group('Context Control')
     context_control.add_argument('-A', '--after-context',
                                  dest='after_context', type=int, default=0,
@@ -209,7 +225,7 @@ def get_parser():
                         outputting %(metavar)s non-matching lines.''')
     general_output.add_argument('-o', '--only-matching',
                         dest='only_matching', action='store_true',
-                        help='''Print only the matched (non-empty) parts of a matching line,
+                        help='''Print only the matched parts of a matching line,
                         with each such part on a separate output line.
                         NOTE: override the -M / --matching-function option.
                         NOTE: ignored when using -S / --fixed-strings.''')
@@ -225,6 +241,14 @@ def get_parser():
                         dest='zero_out', action='store_true',
                         help='''Output a zero byte (the ASCII NUL character) instead of the
                         character that normally follows a file name.''')
+    line_output.add_argument('-z', '--null-end',
+                        dest='zero_end', action='store_true',
+                        help='''Output a zero byte (the ASCII NUL character)
+                        at the end of each output line.''')
+    line_output.add_argument('-0', '--zero-input',
+                        dest='zero_input', action='store_true',
+                        help='''Treat input data as sequences of lines, each terminated
+                        by a zero byte (the ASCII NUL character) instead of a newline.''')
     fd_selection = parser.add_argument_group('Files and Directories Selection')
     fd_selection.add_argument('-d', '--depth',
                         dest='depth', type=int, default=float('+inf'), metavar='NUM',
@@ -246,11 +270,11 @@ def get_parser():
 
 
 if __name__ == '__main__':
-    __errors = 0
+    __exit_status = 0
     parser = get_parser()
     parsed = parser.parse_args()
     if parsed.max_count == 0:
-        sys.exit(0) # nothing to do...
+        sys.exit(1) # nothing to do...
 
     # conflicts:
     if parsed.max_count != -1 and (parsed.files_with_match or parsed.files_without_match):
@@ -283,7 +307,12 @@ if __name__ == '__main__':
               file=sys.stderr)
 
     # output formatting:
-    format_print = FormatPrint(parsed.with_filename, parsed.line_number, parsed.zero_out)
+    if (parsed.files_with_match or parsed.files_without_match):
+        format_print = FormatPrint(False, parsed.with_filename, False, parsed.zero_out)
+    else:
+        format_print = FormatPrint(True, parsed.with_filename, parsed.line_number, parsed.zero_out)
+    if parsed.zero_end:
+        format_print.line_end = '\0'
 
     # recursive level check:
     if parsed.depth < 0:
@@ -346,6 +375,8 @@ if __name__ == '__main__':
             parsed.matching_func = 'finditer'
         elif not parsed.matching_func:
             parsed.matching_func = 'search'
+        if parsed.only_matching:
+            __patterns = ['|'.join(__patterns)]
         for p in __patterns:
             __matching_funcs.append(getattr(re.compile(p, flags=__flags), parsed.matching_func))
 
@@ -369,6 +400,7 @@ if __name__ == '__main__':
         matching_lines = matching_lines_default
 
     # do it:
+    __got_match = 0
     for infile in itertools.chain(*parsed.files):
         try:
             if parsed.files_with_match:
@@ -379,18 +411,25 @@ if __name__ == '__main__':
                 _format = '{filename}'
             else:
                 _f = standard_search
-                if (not parsed.only_matching) or parsed.fixed_strings:
-                    format_print.line_end = ''
                 _format = format_print.get_format()
-            if parsed.count and not (parsed.files_with_match or parsed.files_without_match):
-                print(((infile + ('\0' if parsed.zero_out else '') +  ':')
-                       if parsed.with_filename else '')
-                      + str(sum(1 for _ in _f(infile, matching_lines, __matching_funcs, parsed.max_count, __context))))
+            if parsed.zero_input:
+                split_lines = from_zero_lines_input
             else:
-                for res in _f(infile, matching_lines, __matching_funcs, parsed.max_count, __context):
-                    print(_format.format(**res), end=format_print.line_end)
+                split_lines = from_default_lines_input
+            with (open(infile) if infile != '-' else sys.stdin) as stream:
+                if parsed.count and not (parsed.files_with_match or parsed.files_without_match):
+                    __got_match = sum(1 for _ in _f(split_lines(stream), matching_lines, __matching_funcs, parsed.max_count, __context))
+                    print(((infile + ('\0' if parsed.zero_out else '') +  ':')
+                           if parsed.with_filename else '')
+                          + str(__got_match),
+                          end=format_print.line_end)
+                else:
+                    for __got_match, res in enumerate(_f(split_lines(stream), matching_lines, __matching_funcs, parsed.max_count, __context), start=1):
+                        print(_format.format(**res), end=format_print.line_end)
+                if not __got_match:
+                    __exit_status = 1
         except (ValueError, PermissionError, FileNotFoundError) as e:
             print(f"{parser.prog}: ERROR with file {infile}: {e}", file=sys.stderr)
-            __errors += 1
-    sys.exit(__errors)
+            __exit_status = 2
+    sys.exit(__exit_status)
 
