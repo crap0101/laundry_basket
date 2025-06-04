@@ -96,7 +96,7 @@ def matching_lines_default (stream, match_funcs, *other_not_used):
                     yield [[idx, m.group()] for m in matches]
                 break
 
-def matching_lines_context (stream, match_funcs, context): #XXX+TODO
+def matching_lines_context (stream, match_funcs, context):
     """line match with context"""
     # like sizedcontext.py module, that also in laundry basket.
     def check(funcs, elem):
@@ -124,6 +124,11 @@ def matching_lines_context (stream, match_funcs, context): #XXX+TODO
             post_ctx -= 1
         else:
             preq.append([idx, elem])
+
+def negate_match(funcs):
+    def inner_negate(pattern):
+        return not any(f(pattern) for f in funcs)
+    return inner_negate
 
 # maybe excessive...
 # class SetFlag(argparse.Action):
@@ -167,7 +172,6 @@ def get_parser():
     matching.add_argument('-v', '--invert-match',
                         dest='invert', action='store_true',
                         help='''Invert the sense of matching, to select non-matching lines.''')
-                        #XXX: check: NOTE: works when there's one pattern only present at command line.''')
     context_control = parser.add_argument_group('Context Control')
     context_control.add_argument('-A', '--after-context',
                                  dest='after_context', type=int, default=0,
@@ -347,8 +351,8 @@ if __name__ == '__main__':
 
     # ...
     if parsed.invert:
-        __matching_funcs = [lambda arg: not f(arg) for f in __matching_funcs]
-
+        #__matching_funcs = [lambda arg: not f(arg) for f in __matching_funcs]
+        __matching_funcs = [negate_match(__matching_funcs)]
     # context
     if any([parsed.context, parsed.after_context, parsed.before_context]):
         if parsed.only_matching:
