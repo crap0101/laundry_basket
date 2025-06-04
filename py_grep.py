@@ -32,8 +32,8 @@ searches read standard input.
 Directories and recursive search needed the filelist module.'''
 
 EPILOG='''EXIT STATUS
-Normally the exit status is 0 if a line is selected, 1 if no lines were
-selected, and 2 if an error occurred
+    Normally the exit status is 0 if a line is selected, 1 if no lines were
+    selected, and 2 if an error occurred.
 '''
 Context = namedtuple('Context', ('pre','post'))
 
@@ -154,7 +154,8 @@ def from_default_lines_input(stream):
 #         setattr(namespace, 're_flags', getattr(namespace, 're_flags') | self._const_value)
 
 def get_parser():
-    parser = argparse.ArgumentParser(prog=PROGNAME, description=DESCRIPTION, epilog=EPILOG)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     prog=PROGNAME, description=DESCRIPTION, epilog=EPILOG)
     matching = parser.add_argument_group('Matching Control')
     matching.add_argument('-a', '--ascii-match',
                         dest='re_flag_ascii', action='store_const', default=0, const=re.A,
