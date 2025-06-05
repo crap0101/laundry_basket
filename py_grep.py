@@ -132,8 +132,8 @@ def matching_lines_context (stream, match_funcs, context):
             preq.append([idx, elem])
 
 def negate_match(funcs):
-    def inner_negate(pattern):
-        return not any(f(pattern) for f in funcs)
+    def inner_negate(line):
+        return not any(f(line) for f in funcs)
     return inner_negate
 
 def from_zero_lines_input(stream):
@@ -143,6 +143,12 @@ def from_zero_lines_input(stream):
 def from_default_lines_input(stream):
     for line in stream:
         yield line.rstrip('\n')
+
+def findlist_func(match_obj):
+    """Get a list instead of an iterator from re.finditer"""
+    def inner_findlist(line):
+        return list(match_obj.finditer(line))
+    return inner_findlist
 
 # maybe excessive...
 # class SetFlag(argparse.Action):
@@ -186,9 +192,7 @@ def get_parser():
                         help=f'Interpret any {PATTERNS} as fixed strings, not regular expressions.')
     matching.add_argument('-v', '--invert-match',
                         dest='invert', action='store_true',
-                        help='''Invert the sense of matching, to select non-matching lines.
-                        NOTE: used together with --only-matching causes the exit status
-                        to be always 1 as no lines will be selected.''')
+                        help='''Invert the sense of matching, to select non-matching lines.''')
     context_control = parser.add_argument_group('Context Control')
     context_control.add_argument('-A', '--after-context',
                                  dest='after_context', type=int, default=0,
@@ -227,9 +231,14 @@ def get_parser():
     general_output.add_argument('-o', '--only-matching',
                         dest='only_matching', action='store_true',
                         help='''Print only the matched parts of a matching line,
-                        with each such part on a separate output line.
-                        NOTE: override the -M / --matching-function option.
-                        NOTE: ignored when using -S / --fixed-strings.''')
+                        with each such part on a separate output line. 
+                        
+                        NOTE: override the -M / --matching-function option. 
+                        
+                        NOTE: ignored when using -S / --fixed-strings. 
+                        
+                        NOTE: used together with --only-matching is not so meaningful
+                        for the produced output, which results the same without this option.''')
     line_output = parser.add_argument_group('Output Line Control')
     line_output.add_argument('-n', '--line-number',
                         dest='line_number', action='store_true',
@@ -373,24 +382,24 @@ if __name__ == '__main__':
     else:
         __flags = parsed.re_flag_ascii | parsed.re_flag_nocase
         if parsed.only_matching:
-            parsed.matching_func = 'finditer'
+            #parsed.matching_func = 'finditer' # using findlist_func
+            __patterns = ['|'.join(__patterns)]
         elif not parsed.matching_func:
             parsed.matching_func = 'search'
-        if parsed.only_matching:
-            __patterns = ['|'.join(__patterns)]
         for p in __patterns:
-            __matching_funcs.append(getattr(re.compile(p, flags=__flags), parsed.matching_func))
-
+            if parsed.only_matching:
+                __matching_funcs.append(findlist_func(re.compile(p, flags=__flags)))
+            else:
+                __matching_funcs.append(getattr(re.compile(p, flags=__flags), parsed.matching_func))
     # ...
     if parsed.invert:
-        #__matching_funcs = [lambda arg: not f(arg) for f in __matching_funcs]
         __matching_funcs = [negate_match(__matching_funcs)]
     # context
     if any([parsed.context, parsed.after_context, parsed.before_context]):
         if parsed.only_matching:
             __context = Context(0, 0)
             matching_lines = matching_lines_default
-        if parsed.context: # this or the others,checked before in the "# conflict" section
+        if parsed.context: # this or the others, checked before in the "# conflict" section
             __context = Context(parsed.context, parsed.context)
             matching_lines = matching_lines_context
         else:
