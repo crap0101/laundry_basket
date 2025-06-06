@@ -11,9 +11,9 @@ import os
 import re
 import sys
 
-# external module filelist.py (this too from the laundry basket)
+# external package files_stuff @ https://github.com/crap0101/files_stuff
 try:
-    import filelist
+    from files_stuff import filelist
     CAN_SCANDIR = True
 except ImportError:
     CAN_SCANDIR = False
@@ -29,7 +29,9 @@ A FILE of "-" stands for standard input. If no FILE is given,
 recursive searches examine the working directory, and nonrecursive
 searches read standard input.
 
-Directories and recursive search needs the filelist module.'''
+Directories and recursive search needs the filelist module from then
+files_stuff package @ https://github.com/crap0101/files_stuff.
+'''
 
 EPILOG='''EXIT STATUS
     Normally the exit status is 0 if a line is selected, 1 if no lines were
