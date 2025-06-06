@@ -11,7 +11,7 @@ import os
 import re
 import sys
 
-# optional module filelist.py (this too from the laundry basket)
+# external module filelist.py (this too from the laundry basket)
 try:
     import filelist
     CAN_SCANDIR = True
@@ -29,7 +29,7 @@ A FILE of "-" stands for standard input. If no FILE is given,
 recursive searches examine the working directory, and nonrecursive
 searches read standard input.
 
-Directories and recursive search needed the filelist module.'''
+Directories and recursive search needs the filelist module.'''
 
 EPILOG='''EXIT STATUS
     Normally the exit status is 0 if a line is selected, 1 if no lines were
@@ -60,21 +60,21 @@ class FormatPrint:
             fmt = '{}{}{}'.format('{filename}', ':' if not self._zero_out else '\0', fmt)
         return fmt
 
-def file_with_match(stream, matching_lines, matching_funcs, *others_not_used):
+def file_with_match(stream, filename_or_label, matching_lines, matching_funcs, *others_not_used):
     for _ in matching_lines(stream, matching_funcs):
-        yield {'filename':infile, 'line_num':0, 'line':''}
+        yield {'filename':filename_or_label, 'line_num':0, 'line':''}
         break
 
-def file_without_match(stream, matching_lines, matching_funcs, *others_not_used):
+def file_without_match(stream, filename_or_label, matching_lines, matching_funcs, *others_not_used):
     for _ in matching_lines(stream, matching_funcs):
         break
     else:
-        yield {'filename':infile, 'line_num':0, 'line':''}
+        yield {'filename':filename_or_label, 'line_num':0, 'line':''}
         
-def standard_search (stream, matching_lines, matching_funcs, max_count, context):
+def standard_search (stream, filename_or_label, matching_lines, matching_funcs, max_count, context):
     for match_num, seq in enumerate(matching_lines(stream, matching_funcs, context), start=1):
         for (line_num, match) in seq:
-            yield {'filename':infile, 'line_num':line_num, 'line':match}
+            yield {'filename':filename_or_label, 'line_num':line_num, 'line':match}
         if match_num >= max_count:
             break
 
@@ -247,6 +247,10 @@ def get_parser():
     line_output.add_argument('-H', '--with-filename',
                         dest='with_filename', action='store_true',
                         help='Print the file name for each match.')
+    line_output.add_argument('--label', dest='label',
+                             default=None, metavar='LABEL',
+                             help='''Display input actually coming from standard input as input
+                             coming from file %(metavar)s.''')
     line_output.add_argument('-Z', '--null',
                         dest='zero_out', action='store_true',
                         help='''Output a zero byte (the ASCII NUL character) instead of the
@@ -427,14 +431,15 @@ if __name__ == '__main__':
             else:
                 split_lines = from_default_lines_input
             with (open(infile) if infile != '-' else sys.stdin) as stream:
+                __label = infile if (infile != '-' or parsed.label is None) else parsed.label
                 if parsed.count and not (parsed.files_with_match or parsed.files_without_match):
-                    __got_match = sum(1 for _ in _f(split_lines(stream), matching_lines, __matching_funcs, parsed.max_count, __context))
+                    __got_match = sum(1 for _ in _f(split_lines(stream), __label, matching_lines, __matching_funcs, parsed.max_count, __context))
                     print(((infile + ('\0' if parsed.zero_out else '') +  ':')
                            if parsed.with_filename else '')
                           + str(__got_match),
                           end=format_print.line_end)
                 else:
-                    for __got_match, res in enumerate(_f(split_lines(stream), matching_lines, __matching_funcs, parsed.max_count, __context), start=1):
+                    for __got_match, res in enumerate(_f(split_lines(stream), __label, matching_lines, __matching_funcs, parsed.max_count, __context), start=1):
                         print(_format.format(**res), end=format_print.line_end)
                 if not __got_match:
                     __exit_status = 1
