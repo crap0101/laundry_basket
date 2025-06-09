@@ -146,11 +146,13 @@ def from_default_lines_input(stream):
     for line in stream:
         yield line.rstrip('\n')
 
+'''
 def findlist_func(match_obj):
     """Get a list instead of an iterator from re.finditer"""
     def inner_findlist(line):
         return list(match_obj.finditer(line))
     return inner_findlist
+'''
 
 # maybe excessive...
 # class SetFlag(argparse.Action):
@@ -332,7 +334,7 @@ if __name__ == '__main__':
 
     # recursive level check:
     if parsed.depth < 0:
-        parser.error("depth must be > 0")
+        parser.error("depth must be >= 0")
 
     # input files:
     if not parsed.files:
@@ -388,15 +390,15 @@ if __name__ == '__main__':
     else:
         __flags = parsed.re_flag_ascii | parsed.re_flag_nocase
         if parsed.only_matching:
-            #parsed.matching_func = 'finditer' # using findlist_func
+            parsed.matching_func = 'findall' #XXXX# using findlist_func
             __patterns = ['|'.join(__patterns)]
         elif not parsed.matching_func:
             parsed.matching_func = 'search'
         for p in __patterns:
-            if parsed.only_matching:
-                __matching_funcs.append(findlist_func(re.compile(p, flags=__flags)))
-            else:
-                __matching_funcs.append(getattr(re.compile(p, flags=__flags), parsed.matching_func))
+            #if parsed.only_matching:
+            #    __matching_funcs.append(findlist_(re.compile(p, flags=__flags))) #findlist_func(re.compile(p, flags=__flags)))
+            #else:
+            __matching_funcs.append(getattr(re.compile(p, flags=__flags), parsed.matching_func))
     # ...
     if parsed.invert:
         __matching_funcs = [negate_match(__matching_funcs)]
