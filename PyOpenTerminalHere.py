@@ -31,6 +31,9 @@ working_dir_opt = "--working-directory={}"
 
 The {} will be replaced with the current working directory path (really!)
 
+If something doesn't work, look at your system's temp dir for
+^PyOpenTerminalHere_*
+files, which may contains info about the fuck.
 """
 
 import configparser
