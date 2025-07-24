@@ -16,7 +16,7 @@ import shutil
 import sys
 import urllib.parse
 
-_EXTS = ('RW2', 'CR2', 'ORF', 'dng')
+_EXTS = ('RW2', 'CR2', 'ORF', 'dng', 'NEF')
 _SFNAME = 'RAW'
 
 def _debug(*a, **k):

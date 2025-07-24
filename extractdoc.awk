@@ -40,7 +40,7 @@ function foo2(a, b, c) {
     # will be
     # ignored
 }
-	 
+
 function bar () {
   ## bar doc
 }
@@ -60,10 +60,10 @@ function spam (a,   x) {
     return x
 }
 
-func spam2(a,   x, y) {  
+func spam2(a,   x, y) {
 }
 
-func spam3(a,   x, y) {  
+func spam3(a,   x, y) {
     # Like <spam2> this function is show
     # only when --no-posix-mode is in effect.
 }
@@ -87,6 +87,7 @@ function multiline_f2(a, b, c,  # blanks at the end of the line makes
 function help() {
     printf("" "\n"							\
 "%s v.%s\n" "\n"\
+"USAGE: %s [FILE...]\n" "\n"\
 "Extract documentation from an awk source file.\n" "\n" \
 "The first bunch of commented out lines (shebang excluded) are the" "\n" \
 "module \"description\", used for general information about the program itself." "\n"\
@@ -140,7 +141,7 @@ function help() {
 "       Print this help.    " "\n"\
 "     -v, --version" "\n"\
 "       Print the program version." "\n",
-	   PROGNAME, PROGVERSION)
+	   PROGNAME, PROGVERSION, PROGNAME)
     awkpot::set_end_exit(0)
 }
 function version() {
@@ -157,7 +158,7 @@ function parse_command_line() {
     longopts = "nodoc,no-description,exclude:,include-locals,locals-sep,"
     longopts = longopts "indent:,only-name,outfile:,outfile-suffix:,"
     longopts = longopts "no-posix-mode,sort:,print-filename,help,version"
-    
+
     while ((c = getopt(ARGC, ARGV, shortopts, longopts)) != -1)
 	switch (c) {
 	    case "d": case "nodoc": # do not get nor print docstring
@@ -234,7 +235,7 @@ function get_func_def(s, include_locals,    name, arr, param, sn, oldrs) {
 	RS = ")"
 	awkpot::getline_or_die(FILENAME, 1)
         # also add the ) chomped before, needed at the end
-	s = s "" awkpot::get_record_string() ")" 
+	s = s "" awkpot::get_record_string() ")"
 
 	# get the (unused) last chunk of the current line, so as
 	# the next record reading is clean
@@ -337,7 +338,7 @@ BEGIN {
     }
     if (! outfile)
 	outfile = "/dev/stdout"
-    
+
     if (posix_mode)
 	funmatch = @/^function$/
     else
