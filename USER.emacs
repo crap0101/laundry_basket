@@ -1,5 +1,21 @@
-;; .emacs init file by Marco Chieppa | crap0101
+;; .emacs init file
 
+;; This file is NOT part of GNU Emacs.
+;;
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;;
+;; author: Marco Chieppa | crap0101 ...with some help from Custom :D
 
 ;; load vibuf ;;
 (add-to-list 'load-path "/home/crap0101/local/share/emacs")
@@ -14,10 +30,6 @@
 ; ...and set key bindings
 (global-set-key (kbd "C-S-<left>") (lambda () (interactive) (vibuf-prev-buffer)))
 (global-set-key (kbd "C-S-<right>") (lambda () (interactive) (vibuf-next-buffer)))
-
-
-
-
 
 ;; maximize window
 (setq initial-frame-alist '((fullscreen . maximized)))
@@ -124,6 +136,9 @@ buffer's lines, go to the last line."
 ; change font size with C-[MouseWheelUpOrDown]
 (global-set-key (kbd "<C-mouse-4>") (lambda () (interactive) (text-scale-decrease 1)))
 (global-set-key (kbd "<C-mouse-5>") (lambda () (interactive) (text-scale-increase 1)))
+(add-hook 'python-mode-hook
+	  (lambda ()
+            (local-set-key (kbd "C-c C-SPC") 'comment-or-uncomment-region)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -172,33 +187,43 @@ buffer's lines, go to the last line."
 (set-face-attribute 'region nil :background "#666666")
 (set-frame-font "DejaVu Sans Mono 15")
 
+;; diff ;;
+(defun update-diff-colors ()
+  "update the colors for diff faces"
+  (set-face-attribute 'diff-added nil
+                      :background "green")
+  (set-face-attribute 'diff-removed nil
+                      :background "red")
+  (set-face-attribute 'diff-changed nil
+                      :background "blue"))
+(eval-after-load "diff-mode" '(update-diff-colors))
+
+;; (with-eval-after-load 'ediff
+;;   (set-face-foreground
+;;     ediff-current-diff-face-A "green")
+;;   (set-face-background
+;;     ediff-current-diff-face-A "orange")
+;;   (set-face-foreground
+;;     ediff-current-diff-face-B "blue")
+;;   (set-face-background
+;;     ediff-current-diff-face-B "red")
+;;   (make-face-italic ediff-current-diff-face-B))
+
 
 ;; erc ;;
 ;(require 'erc-join)
 ;(erc-autojoin-mode 1)
-(setq erc-modules '(autojoin button completion dcc fill irccontrols
-                             list match menu move-to-prompt netsplit
-                             networks noncommands readonly ring stamp track)
-      erc-autojoin-channels-alist '(("freenode.net" "#hackerforum" "#init1" "#linux-libre"))
-      erc-away-nickname nil
-      erc-prompt-for-channel-key nil
-      erc-public-away-p nil
-      erc-user-full-name "Marco Chieppa | http://crap0101.altervista.org/"
-      erc-auto-discard-away t
-      erc-autoaway-idle-seconds 900)
+;; (setq erc-modules '(autojoin button completion dcc fill irccontrols
+;;                              list match menu move-to-prompt netsplit
+;;                              networks noncommands readonly ring stamp track)
+;;       erc-autojoin-channels-alist '(("freenode.net" "#hackerforum" "#init1" "#linux-libre"))
+;;       erc-away-nickname nil
+;;       erc-prompt-for-channel-key nil
+;;       erc-public-away-p nil
+;;       erc-user-full-name "Marco Chieppa | http://crap0101.altervista.org/"
+;;       erc-auto-discard-away t
+;;       erc-autoaway-idle-seconds 900)
 
 ;; rust ;;
-(add-to-list 'load-path "/home/crap0101/.emacs.d/rust")
-(require 'rust-mode)
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+;;(add-to-list 'load-path "/home/crap0101/.emacs.d/rust")
+;;(require 'rust-mode)
