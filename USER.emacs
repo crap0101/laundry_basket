@@ -123,8 +123,11 @@ buffer's lines, go to the last line."
 (global-set-key "\C-xw" 'other-window)
 
 ;; others simple bindings
-(global-set-key "\C-c\C-r" (lambda () (interactive)
-			     (progn (revert-buffer nil t) (message "%s" "buffer reverted"))))
+(global-set-key [f1] (lambda () (interactive)
+		       (progn (revert-buffer nil t t) (message "%s" "buffer reverted"))))
+;(global-set-key "\C-c\C-r" (lambda () (interactive)
+;			     (progn (revert-buffer nil t t) (message "%s" "buffer reverted"))))
+
 ;; for previously defined functions
 (global-set-key "\C-cg" 'go-line)
 (global-set-key "\C-c\C-c" 'copy-lines)
@@ -136,10 +139,11 @@ buffer's lines, go to the last line."
 ; change font size with C-[MouseWheelUpOrDown]
 (global-set-key (kbd "<C-mouse-4>") (lambda () (interactive) (text-scale-decrease 1)))
 (global-set-key (kbd "<C-mouse-5>") (lambda () (interactive) (text-scale-increase 1)))
-(add-hook 'python-mode-hook
-	  (lambda ()
-            (local-set-key (kbd "C-c C-SPC") 'comment-or-uncomment-region)))
-
+;
+(global-set-key (kbd "C-c C-SPC") 'comment-or-uncomment-region)
+;; (add-hook 'python-mode-hook
+;; 	  (lambda ()
+;;             (local-set-key (kbd "C-c C-SPC") 'comment-or-uncomment-region)))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; custom variables ;;
@@ -197,32 +201,6 @@ buffer's lines, go to the last line."
   (set-face-attribute 'diff-changed nil
                       :background "blue"))
 (eval-after-load "diff-mode" '(update-diff-colors))
-
-;; (with-eval-after-load 'ediff
-;;   (set-face-foreground
-;;     ediff-current-diff-face-A "green")
-;;   (set-face-background
-;;     ediff-current-diff-face-A "orange")
-;;   (set-face-foreground
-;;     ediff-current-diff-face-B "blue")
-;;   (set-face-background
-;;     ediff-current-diff-face-B "red")
-;;   (make-face-italic ediff-current-diff-face-B))
-
-
-;; erc ;;
-;(require 'erc-join)
-;(erc-autojoin-mode 1)
-;; (setq erc-modules '(autojoin button completion dcc fill irccontrols
-;;                              list match menu move-to-prompt netsplit
-;;                              networks noncommands readonly ring stamp track)
-;;       erc-autojoin-channels-alist '(("freenode.net" "#hackerforum" "#init1" "#linux-libre"))
-;;       erc-away-nickname nil
-;;       erc-prompt-for-channel-key nil
-;;       erc-public-away-p nil
-;;       erc-user-full-name "Marco Chieppa | http://crap0101.altervista.org/"
-;;       erc-auto-discard-away t
-;;       erc-autoaway-idle-seconds 900)
 
 ;; rust ;;
 ;;(add-to-list 'load-path "/home/crap0101/.emacs.d/rust")

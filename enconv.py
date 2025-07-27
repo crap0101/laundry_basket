@@ -53,19 +53,19 @@ except ImportError:
     HAVE_CHARDET = False
 
 
-def change_encoding(stream: BinaryIO,
+def change_encoding (stream: BinaryIO,
                     input_enc='utf-8',
                     output_enc='utf-8',
-                    chunk_size=1024) -> Iterator[bytes]:
+                    size=1024) -> Iterator[bytes]:
     """
     Yields bytes from $stream after encoding it
     from $input_enc encoding to $output_enc encoding.
     """
-    while (readed := stream.read(chunk_size)):
+    while (readed := stream.read(size)):
         yield readed.decode(input_enc).encode(output_enc)
 
 
-def check_codec(codec_string: str) -> bool:
+def check_codec (codec_string: str) -> bool:
     """Returns True if $coded_string is a known codec."""
     try:
         return bool(codecs.lookup(codec_string))
@@ -73,7 +73,7 @@ def check_codec(codec_string: str) -> bool:
         return False
 
 
-def get_binstream(filename, mode='r'):
+def get_binstream (filename, mode='r'):
     """
     If $filename is already a compatible I/O stream,
     returns the underlying buffer, otherwise opens it
@@ -87,24 +87,24 @@ def get_binstream(filename, mode='r'):
     return open(filename, mode=mode+'b')
 
 
-def guess_encoding_bigfile(filename, chunk=1024):
+def guess_encoding_bigfile (filename, size=1024):
     """
     Returns the encoding of $filename, or None if fails.
-    Reads $chunk bytes of $filename at a time.
+    Reads $size bytes of $filename at a time.
     """
     detect = UniversalDetector()
     with open(filename, mode='rb') as f:
-        while (readed := f.read(chunk)):
+        while (readed := f.read(size)):
             detect.feed(readed)
             if detect.done:
                 break
     detect.close()
     return detect.result['encoding']
 
-def guess_encoding_default(filename):
+def guess_encoding_default (filename, size=512):
     """Returns the encoding of $filename, or None if fails."""
     with open(filename, mode='rb') as f:
-        return chardet.detect(f.read())['encoding']
+        return chardet.detect(f.read(size))['encoding']
 
 
 def get_parser():
@@ -134,6 +134,15 @@ def get_parser():
     parser.add_argument("-o", "--output-file",
                         dest="output_file", default=sys.stdout, metavar="FILE",
                         help="Path to a file, otherwise uses stdout.")
+    parser.add_argument("-s", "--size",
+                        dest="size", default=512, type=int, metavar="BYTES_SIZE",
+                        help="""Read %(metavar)s from file for codec guessing. 
+                        Default to %(default)s.
+                        %(metavar)s <= 0 meant to read the whole file.""")
+    parser.add_argument("-S", "--rw-size",
+                        dest="rw_size", default=2048, type=int, metavar="BYTES_SIZE",
+                        help="""Perform read and write operations in chunks of %(metavar)s. 
+                        Default to %(default)s.""")
     parser.add_argument('-v', '--version',
                         action='version', version=f'{VERSION}')
     return parser
@@ -141,6 +150,10 @@ def get_parser():
 if __name__ == '__main__':
     parser = get_parser()
     parsed = parser.parse_args()
+    if parsed.size <= 0:
+        parsed.size = -1
+    if parsed.rw_size <= 0:
+        parser.error(f"read/write size must be > 0, not {parsed.rw_size}")
     if parsed.bigfile:
         guess_encoding = guess_encoding_bigfile
     else:
@@ -152,7 +165,7 @@ if __name__ == '__main__':
         elif not HAVE_CHARDET:
             parser.error("Can't guess input encoding, "
                          "specify it of install the chardet module.")
-        parsed.input_enc = guess_encoding(parsed.input_file)
+        parsed.input_enc = guess_encoding(parsed.input_file, parsed.size)
     if parsed.only_check_enc:
         print(parsed.input_enc)
         sys.exit(0)
@@ -166,5 +179,5 @@ if __name__ == '__main__':
     with get_binstream(parsed.input_file, mode='r') as fin:
         with get_binstream(parsed.output_file, mode='w') as fout:
             for data in change_encoding(
-                    fin, parsed.input_enc, parsed.output_enc):
+                    fin, parsed.input_enc, parsed.output_enc, parsed.rw_size):
                 fout.write(data)
