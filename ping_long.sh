@@ -85,6 +85,7 @@ Current Time:                $(date '+%F %T')
 Total runs: $total
 Succeed: $succeed ($(( succeed * 100 / total ))%)
 Failed: $failed ($(( failed * 100 / total ))%)
+Last: $last
 STAT_INFO
     (( retcode += $? ))
     return $retcode
@@ -111,8 +112,10 @@ function run () {
 	st=$(date +%s)
 	if ping -c 1 -W $timeout google.it; then
 	    echo -n 1 >> "$DATAFILE"
+	    last="succeed"
 	else
 	    echo -n 0 >> "$DATAFILE"
+	    last="failed"
 	fi
 	sleep $((sleeptime - ($(date +%s) - st) ))
 	#&>/dev/null
