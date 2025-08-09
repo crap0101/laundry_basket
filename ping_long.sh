@@ -78,6 +78,11 @@ function getstat () {
     (( retcode += $? ))
     start_time=$(stat -c %w $LOCKFILE 2>/dev/null)
     if ! [ "$start_time" ]; then start_time="NOT RUNNING, NOT AVAILABLE"; fi
+    if [ "$(tail -c 1 $DATAFILE)" == "1" ]; then
+	last="Succeed"
+    else
+	last="Failed"
+    fi
     cat <<STAT_INFO
 Start Time:                  $start_time
 First Data registering Time: $(stat -c %w $DATAFILE)
@@ -112,10 +117,8 @@ function run () {
 	st=$(date +%s)
 	if ping -c 1 -W $timeout google.it; then
 	    echo -n 1 >> "$DATAFILE"
-	    last="succeed"
 	else
 	    echo -n 0 >> "$DATAFILE"
-	    last="failed"
 	fi
 	sleep $((sleeptime - ($(date +%s) - st) ))
 	#&>/dev/null
