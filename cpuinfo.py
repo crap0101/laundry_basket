@@ -71,7 +71,7 @@ def get_parsed():
     p = argparse.ArgumentParser()
     p.add_argument('-e', '--extra',
                    dest='extra_info', action='store_true',
-                   help='(mainly for debug: Show some extra informations.')
+                   help='(mainly for debug) Show some extra informations.')
     p.add_argument('-m', '--only-main',
                    dest='only_main', action='store_true',
                    help='Show the main cpu only.')

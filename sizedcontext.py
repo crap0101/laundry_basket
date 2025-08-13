@@ -30,6 +30,10 @@ class SizedQueue:
 # XXX+TODO: compare SizedQueue with collection.deque
 
 class ContextIter:
+    """
+    Filters a given sequence using a callable for matching elements,
+    keeping an amount of pre/post context.
+    """
     def __init__ (self, seq: Sequence = [], match: Callable = operator.truth, ctx_pre=0, ctx_post=0):
         if ctx_pre < 0 or ctx_post < 0:
             raise ValueError("ctx_pre and ctx_post must be >= 0")
