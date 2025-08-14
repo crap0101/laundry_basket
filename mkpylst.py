@@ -4,7 +4,7 @@
 # initial release: 2009
 # version: 0.5
 # date: 2023-10-01
-# Copyright (C) 2009  Marco Chieppa ( a.k.a. crap0101)
+# Copyright (C) 2009-2025  Marco Chieppa ( a.k.a. crap0101)
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

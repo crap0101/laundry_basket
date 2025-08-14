@@ -1,8 +1,30 @@
 
-# Author: Marco Chieppa
-# 2025
 # a stub... grep-like command with some enhancem....cough cough... differences
 # over the original.
+
+# Copyright (c) 2025  Marco Chieppa | crap0101
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to
+# deal in the Software without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+# sell copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 
 import argparse
 from collections import deque, namedtuple
@@ -37,22 +59,24 @@ EPILOG='''EXIT STATUS
     Normally the exit status is 0 if a line is selected, 1 if no lines were
     selected, and 2 if an error occurred.
 '''
+
 Context = namedtuple('Context', ('pre','post'))
 
+
 class FormatPrint:
-    def __init__(self, print_line=True, use_filename=False, use_line_num=False, zero_out=False, line_end=None):
+    def __init__ (self, print_line=True, use_filename=False, use_line_num=False, zero_out=False, line_end=None):
         self._print_line = print_line
         self._use_filename = use_filename
         self._use_line_num = use_line_num
         self._zero_out = zero_out
         self.line_end = line_end
-    def print_line(self, bool_value):
+    def print_line (self, bool_value):
         self._print_line = bool(bool_value)
-    def use_filename(self, bool_value):
+    def use_filename (self, bool_value):
         self._use_filename = bool(bool_value)
-    def use_line_num(self, bool_value):
+    def use_line_num (self, bool_value):
         self._use_line_num = bool(bool_value)
-    def get_format(self):
+    def get_format (self):
         fmt = ''
         if self._print_line:
             fmt = '{line}'
@@ -62,12 +86,12 @@ class FormatPrint:
             fmt = '{}{}{}'.format('{filename}', ':' if not self._zero_out else '\0', fmt)
         return fmt
 
-def file_with_match(stream, filename_or_label, matching_lines, matching_funcs, *others_not_used):
+def file_with_match (stream, filename_or_label, matching_lines, matching_funcs, *others_not_used):
     for _ in matching_lines(stream, matching_funcs):
         yield {'filename':filename_or_label, 'line_num':0, 'line':''}
         break
 
-def file_without_match(stream, filename_or_label, matching_lines, matching_funcs, *others_not_used):
+def file_without_match (stream, filename_or_label, matching_lines, matching_funcs, *others_not_used):
     for _ in matching_lines(stream, matching_funcs):
         break
     else:
@@ -163,7 +187,7 @@ def findlist_func(match_obj):
 #     def __call__ (self, parser, namespace, value, option_string=None):
 #         setattr(namespace, 're_flags', getattr(namespace, 're_flags') | self._const_value)
 
-def get_parser():
+def get_parser ():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      prog=PROGNAME, description=DESCRIPTION, epilog=EPILOG)
     matching = parser.add_argument_group('Matching Control')
@@ -437,13 +461,21 @@ if __name__ == '__main__':
             with (open(infile) if infile != '-' else sys.stdin) as stream:
                 __label = infile if (infile != '-' or parsed.label is None) else parsed.label
                 if parsed.count and not (parsed.files_with_match or parsed.files_without_match):
-                    __got_match = sum(1 for _ in _f(split_lines(stream), __label, matching_lines, __matching_funcs, parsed.max_count, __context))
+                    __got_match = sum(1 for _ in _f(split_lines(stream),
+                                                    __label, matching_lines,
+                                                    __matching_funcs, parsed.max_count,
+                                                    __context))
                     print(((infile + ('\0' if parsed.zero_out else '') +  ':')
                            if parsed.with_filename else '')
                           + str(__got_match),
                           end=format_print.line_end)
                 else:
-                    for __got_match, res in enumerate(_f(split_lines(stream), __label, matching_lines, __matching_funcs, parsed.max_count, __context), start=1):
+                    for __got_match, res in enumerate(
+                            _f(split_lines(stream),
+                               __label, matching_lines,
+                               __matching_funcs, parsed.max_count,
+                               __context),
+                            start=1):
                         print(_format.format(**res), end=format_print.line_end)
                 if not __got_match:
                     __exit_status = 1

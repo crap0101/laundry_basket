@@ -8,7 +8,7 @@
 # Description: retrieve packages dependencies for apt-based distro
 # Requirement: Python >= 2.7
 
-# Copyright (C) 2012  Marco Chieppa (aka crap0101)
+# Copyright (C) 2012-2025  Marco Chieppa (aka crap0101)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -31,16 +31,21 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import apt
+
 import argparse
 import logging
 import os
 import sys
+# external imports
+import apt
+# ( on debian systems: python-apt or python3-apt )
+
 
 LOGNAME = 'get_deps'
 LOG_LEVELS = ('DEBUG', 'INFO', 'WARNING', 'ERROR')
 DEFAULT_LOG_LEVEL = 'INFO'
 PRIORITIES = ('required', 'important', 'standard', 'optional', 'extra')
+
 
 def get_pkg_deps (pkgname, priorities=(), cache=None):
     """
@@ -65,6 +70,7 @@ def get_pkg_deps (pkgname, priorities=(), cache=None):
         return set(p for p in pkg_deps if cache[p].priority not in priorities)
     else:
         return pkg_deps
+
 
 def get_pkg_deep_deps (pgkname, priorities=(), cache=None):
     """
@@ -96,6 +102,7 @@ def get_pkg_deep_deps (pgkname, priorities=(), cache=None):
         else:
             break
     return pkg_ddeps
+
 
 def get_deps (pkgname, priorities=(), cache=None, deep_search=False):
     """

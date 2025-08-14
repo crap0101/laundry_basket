@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2012  Marco Chieppa (aka crap0101)
+# Copyright (C) 2012-2025  Marco Chieppa (aka crap0101)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to

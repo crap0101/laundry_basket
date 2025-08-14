@@ -35,13 +35,13 @@ def test ():
     ("the shop", "my brother"),
     ("a never used", ".terminating rule"))
     input = "I bought a B of As from T S."
-    print markov(input, rules)
+    print(input, markov(input, rules),sep='\n', end= '\n' + '='*20 + '\n')
     rules = (
     ("|0", "0||"),
     ("1", "0|"),
     ("0", ""))
     input = '101'
-    print markov(input, rules)
+    print(input, markov(input, rules),sep='\n', end= '\n' + '='*20 + '\n')
     rules = (
         ("A", "apple"),
         ("WWWW", "with"),
@@ -54,7 +54,7 @@ def test ():
         ("the shop", "my brother"),
         ("a never used", ".terminating rule"))
     input = 'I bought a B of As W my Bgage from T S.'
-    print markov(input, rules)
+    print(input, markov(input, rules),sep='\n', end= '\n' + '='*20 + '\n')
     # http://rosettacode.org/wiki/Execute_a_Markov_algorithm#Ruleset_5
     rules = (
         ("A0",  "1B"),
@@ -68,7 +68,7 @@ def test ():
         ("0C1", "H01"),
         ("1C1", "H11"))
     input = '000000A000000'
-    print markov(input, rules)
+    print(input, markov(input, rules),sep='\n', end= '\n' + '='*20 + '\n')
 
 
 if __name__ == '__main__':

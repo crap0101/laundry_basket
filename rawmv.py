@@ -15,6 +15,9 @@ import os.path
 import shutil
 import sys
 import urllib.parse
+# external import
+# https://github.com/crap0101/files_stuff
+from files_stuff.paths import move
 
 _EXTS = ('RW2', 'CR2', 'ORF', 'dng', 'NEF')
 _SFNAME = 'RAW'
@@ -54,40 +57,6 @@ def get_paths (path, exts):
         for p in glob.glob(os.path.join(path, '*.{}'.format(e))):
             yield p
 
-def _secure_move(orig, dest, replace=True):
-    """ Try to move *orig* to *dest*;
-    if fails try to _copy_ *orig* to *dest*, then delete orig.
-    If *replace* is a true value (default) overwrite *dest* if already exists,
-    raise OSError otherwise.
-    """
-    if hasattr(os, 'replace'): # replace introduced in python 3.3
-        mv = os.replace if replace else os.rename
-    else:
-        mv = os.rename
-    # on some *nix even os.rename can works if *dest* already exists,
-    # so uniform this function's behaviour
-    if not replace and os.path.exists(dest):
-        err = OSError(os.strerror(errno.EEXIST))
-        err.errno = errno.EEXIST
-        raise err
-    try:
-        # on some *nix moving files to different file systems may fail
-        mv(orig, dest)
-    except OSError as err:
-        #_debug("raised:",err)
-        if err.errno == errno.EXDEV:
-            shutil.copy2(orig, dest)
-            os.remove(orig)
-        else:
-            raise err
-
-def move (paths, dest, replace=False):
-    for p in paths:
-        fn = os.path.split(p)[1]
-        try:
-            _secure_move(p, os.path.join(dest, fn), replace)
-        except OSError as err:
-            raise err
 
 def tests ():
     import inspect

@@ -43,7 +43,8 @@ import sys
 import random
 import time
 import tkinter
-
+# https://github.com/crap0101/mad_math
+from mad_math.mad_math import in_perc_range
 
 STICKY = tkinter.N+tkinter.W+tkinter.S+tkinter.E
 
@@ -56,25 +57,6 @@ COLOR_DEAD = BG_COLOR
 CELL_COLORS = (COLOR_DEAD, COLOR_LIVE)
 
 E_CONFIGURE = 22
-
-# from percentage_range.py
-def perc(value, perc, fun=lambda n:n):
-    """
-    value => a number
-    perc  => the requested percentage of $value to get
-    fun   => a callable to be applied to the result
-             (like int(), math.floor(), ...).
-             Default to the identity function.
-    """
-    x = perc * value / 100
-    return fun(x)
-# from percentage_range.py
-def in_perc_range(num, value, perc_value, fun=lambda n:n):
-    """
-    Returns True if $num is in the ±$perc range of $value.
-    """
-    x = perc(value, perc_value, fun)
-    return num >= (value - x) and num <= (value + x)
 
 
 def get_parsed (args=None):

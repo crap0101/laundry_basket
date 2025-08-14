@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 # Name: ugenpass
-# Version: 1.2
+# Version: 1.3
 # Author: Marco Chieppa ( a.k.a. crap0101 )
-# Last Update: 2024-05-20
+# Last Update: 2025-08-14
 # Description: password generator
 # Requirement: Python >= 2.7
 
-# Copyright (C) 2012  Marco Chieppa (aka crap0101)
+# Copyright (C) 2012-2025  Marco Chieppa (aka crap0101)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -56,8 +56,12 @@ else:
         a, b = pair_from_time()
         return (chr((ord(x) ^ a ^ b) % chr_range) for x in os.urandom(n))
     range = xrange
+# external imports:
+# https://github.com/crap0101/laundry_basket/blob/master/mismatched_socks.py
+from mismatched_socks import sub_split
 
-VERSION = '1.1'
+
+VERSION = '1.3'
 DESCRIPTION = "Passwords generator."
 
 SYMBOLS = tuple(set(string.printable).difference(string.whitespace))
@@ -163,22 +167,6 @@ def pair_from_time ():
     if b == 0:
         b = __choice(range(10000)) ^ int(time.time())
     return a, b
-
-
-def sub_split (s, min=2):
-    """
-    Yield subpatterns from string *s* with
-    length *min* at least.
-    
-    list(sub_split('abc',1))
-    ['ab', 'abc', 'bc']
-    list(sub_split('abc',1))
-    ['a', 'ab', 'abc', 'b', 'bc', 'c']
-    """
-    l = len(s)
-    for i in range(l-min+1):
-        for j in range(i+min, l+1):
-            yield s[i:j]
 
 
 def print_report (generated, symbols, out=sys.stdout):
