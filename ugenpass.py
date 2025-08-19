@@ -61,6 +61,10 @@ else:
 from mismatched_socks import sub_split
 
 
+#################
+### CONSTANTS ###
+#################
+
 VERSION = '1.3'
 DESCRIPTION = "Passwords generator."
 
@@ -86,9 +90,53 @@ NO_REPORT = ''
 PSW_CHR_LENGTH = 25
 PSW_WRD_LENGTH = 8
 
+BIN_CHOICE = (True, False)
+TRANS_TABLE = {'a': ('A', '4', '/\\', '@'),  'A': ('a', '4', '/\\', '@'),
+               'b': ('B', '|3'),             'B': ('b', '|3'),
+               'c': ('C', '<'),              'C': ('c', '<'),
+               'd': ('D', '|)', 'cl'),       'D': ('d', '|)', 'cl'),
+               'e': ('E', '3', '[-', '&'),   'E': ('e', '3', '[-', '&'),
+               'f': ('F', 'ſ', '|=', 'ph'),  'F': ('f', 'ſ', '|=', 'ph'),
+               'g': ('G', '6', '[_+'),       'G': ('g', '6', '[_+'),
+               'h': ('H', '|-|'),            'H': ('h', '|-|'),
+               'i': ('I', '!', '|'),         'I': ('i', '!', '|'),
+               'j': ('J', '_]'),             'J': ('j', '_]'),
+               'k': ('K', '|<', '1<'),       'K': ('k', '|<', '1<'),
+               'l': ('L', '7', '|_'),        'L': ('l', '7', '|_'),
+               'm': ('M', '^^', 'nn'),       'M': ('m', '^^', 'nn'),
+               'n': ('N', '|\|'),            'N': ('n', '|\|'),
+               'o': ('O', '0', 'ø', '[]'),   'O': ('o', '0', 'ø', '[]'),
+               'p': ('P', '|>', '|*'),       'P': ('p', '|>', '|*'),
+               'q': ('Q', 'O_', '0_'),       'Q': ('q', 'O_', '0_'),
+               'r': ('R', '|*_', 'I2'),      'R': ('r', '|*_', 'I2'),
+               's': ('S', '5', '~'),         'S': ('s', '5', '~'),
+               't': ('T', '|--', '[-'),      'T': ('t', '|--', '[-'),
+               'u': ('U', '(_)', '|_|'),     'U': ('u', '(_)', '|_|'),
+               'v': ('V', '\/', '|/'),       'V': ('v', '\/', '|/'),
+               'w': ('W', '\X/', 'vv'),      'W': ('w', '\X/', 'vv'),
+               'x': ('X', '><', ')('),       'X': ('x', '><', ')('),
+               'y': ('Y', '`/', '>--'),      'Y': ('y', '`/', '>--'),
+               'z': ('Z', '7_'),             'Z': ('z', '7_'),
+               }
+
+
 ########################
 # GENERATION FUNCTIONS #
 ########################
+
+def trans_word (word, use_bin_choice=True):
+    if use_bin_choice:
+        bin_choice = BIN_CHOICE
+    else:
+        bin_choice = (True,)
+    tr = []
+    for c in word:
+        if __choice(bin_choice):
+            tr.append(__choice(TRANS_TABLE.get(c, [__choice(string.printable)])))
+        else:
+            tr.append(c)
+    return ''.join(tr)
+
 
 def ugenpass (symbols, n, randfunc=urandom):
     lst = []
@@ -125,7 +173,7 @@ def gen (symbols, lengths, times,
             yield sep.join(x)
 
 
-def get_words (filepath, wrlen, maxwords):
+def get_words (filepath, wrlen, maxwords, leet):
     with (open(filepath) if filepath != '-' else sys.stdin) as wordsfile:
         s, e = wrlen
         tot = 0
@@ -136,7 +184,9 @@ def get_words (filepath, wrlen, maxwords):
                 wlist.extend(nw[:maxwords-tot])
                 break
             wlist.extend(nw)  
-            tot += len(nw)          
+            tot += len(nw)
+        if leet:
+            return [trans_word(w) for w in wlist]
         return wlist
 
 
@@ -153,7 +203,6 @@ def check_constraint (s, constraint):
             if not (set(s) & STR_CONSTRAINT[masked]):
                 return False, STR_CONSTRAINT[masked]
     return True, 0
-
 
 
 ####################################
@@ -334,6 +383,9 @@ def get_parser():
                     action=range_int_bound_factory(RangeAction, 1, MAXSIZE),
                    help='''Uses words with length in the %(metavar)s range
                         (default: from 1 up to {}).'''.format(MAXSIZE))
+    wp.add_argument('-1', '--leet',
+                    dest='leet', action='store_true',
+                    help='apply a randomic 1337 tranformation to the words.')
     wp.add_argument('-m', '--max-words',
                     dest='max_words', type=int,
                     default=MAXSIZE, metavar='NUMBER',
@@ -382,7 +434,7 @@ if __name__ == '__main__':
         constr = 0
         try:
             SYMBOLS = tuple(set(
-                get_words(args.words, args.word_rlen, args.max_words)))
+                get_words(args.words, args.word_rlen, args.max_words, args.leet)))
             if not SYMBOLS:
                 p.error("Not enough symbols")
         except Exception as e:
