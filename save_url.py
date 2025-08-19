@@ -139,7 +139,7 @@ def doit(opener, url, dest, parser_name, regex, replacement, extension):
     """
     ok, data = get_data(opener, url, parser_name)
     if not ok:
-        print(data)
+        print(f'ERROR with {url}: {data}')
         return False
     if (title := data.title) is not None:
         data.title = regex.sub(replacement, title.get_text().strip())
@@ -153,7 +153,7 @@ def doit(opener, url, dest, parser_name, regex, replacement, extension):
             dest += EXTENSIONS[data.is_xml]
     ok, val = writefile(dest, data)
     if not ok:
-        print(val)
+        print(f'ERROR with {url}: {val}')
         return False
     return True
 
