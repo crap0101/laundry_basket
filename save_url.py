@@ -32,10 +32,12 @@ from urllib.request import build_opener, URLError
 # external:
 from bs4 import BeautifulSoup
 import magic
+# https://github.com/crap0101/py_warnings
+from py_warnings import pywarn
 
 PROGNAME = 'save_url'
-VERSION = '0.2'
-LAST_UPDATE = '2024-01-21'
+VERSION = '0.23'
+LAST_UPDATE = '2025-08-19'
 
 __doc__ = f'''==================================
 {PROGNAME} v{VERSION} ({LAST_UPDATE})
@@ -44,6 +46,7 @@ Save an url to a file (or stdout).
 Tested with Python 3.10.12
 Requires: BeautifulSoup 4 => https://www.crummy.com/software/BeautifulSoup
           python-magic    => https://github.com/ahupp/python-magic
+          py_warnings     => https://github.com/crap0101/py_warnings
 ==========================================================================
 '''
 
@@ -139,7 +142,7 @@ def doit(opener, url, dest, parser_name, regex, replacement, extension):
     """
     ok, data = get_data(opener, url, parser_name)
     if not ok:
-        print(f'ERROR with {url}: {data}')
+        pywarn.warn(pywarn.CustomWarning(f'ERROR with {url}: {data}'))
         return False
     if (title := data.title) is not None:
         data.title = regex.sub(replacement, title.get_text().strip())
@@ -153,7 +156,7 @@ def doit(opener, url, dest, parser_name, regex, replacement, extension):
             dest += EXTENSIONS[data.is_xml]
     ok, val = writefile(dest, data)
     if not ok:
-        print(f'ERROR with {url}: {val}')
+        pywarn.warn(pywarn.CustomWarning(f'ERROR with {url}: {val}'))
         return False
     return True
 
@@ -199,6 +202,13 @@ def get_parser():
                         use a random one.''')
     parser.add_argument('-v', '--version',
                         action='version', version=f'{VERSION}')
+    parser.add_argument("-W", "--warn-type",
+                        dest='warn_type', default=pywarn.ALWAYS_WARNINGS,
+                        choices=pywarn.WARN_OPT,
+                        help='''Warning type: ignore it || send a message || raise an error.
+                        Default: %(default)s.
+                        Program's exit status is not affected by this option... If an error,
+                        got an error.''')
     # positional:
     parser.add_argument('url',
                         metavar='URL',
@@ -215,6 +225,10 @@ def get_parser():
 if __name__ == '__main__':
     parser = get_parser()
     parsed = parser.parse_args()
+
+    pywarn.set_showwarning(pywarn.bare_showwarning)
+    pywarn.set_filter(parsed.warn_type, pywarn.CustomWarning)
+
     
     parsed.replace_regex = re.compile(parsed.replace_regex)
     if not parsed.dest:
