@@ -11,6 +11,8 @@ SYNOPSIS: $(basename "$0") -h|COMMAND [OPTIONS]
         stat     Show statistical informations.
     OTHER OPTIONS:
         -h         show this help and exit.
+OPTIONAL:
+    For runtime info: https://github.com/crap0101/laundry_basket/blob/master/secs2time.sh
 HELP
 }
 
@@ -83,14 +85,11 @@ function getstat () {
     else
 	last="Failed"
     fi
-    #XXXXXXXXXXXXX
-    #t1=$(stat -c %W $FILE)
-    #t2=$(date +%s)
     cat <<STAT_INFO
 Start Time:                  $start_time
 First Data registering Time: $(stat -c %w $DATAFILE)
 Current Time:                $(date '+%F %T')
-Total runs: $total
+Total runs: ${total}$(runtime_info)
 Succeed: $succeed ($(( succeed * 100 / total ))%)
 Failed: $failed ($(( failed * 100 / total ))%)
 Last: $last
@@ -99,6 +98,15 @@ STAT_INFO
     return $retcode
 }
 
+
+function runtime_info () {
+    which secs2time.sh &>/dev/null
+    if [ $? -ne 0 ]; then
+	echo -n ""
+    else
+	echo -ne "\nRuntime: $(secs2time.sh $(( $(date +%s) - $(stat -c %W $DATAFILE) )))\n"
+    fi
+}
 
 function _fakerun () {
     > "$DATAFILE"
