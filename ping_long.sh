@@ -83,6 +83,9 @@ function getstat () {
     else
 	last="Failed"
     fi
+    #XXXXXXXXXXXXX
+    #t1=$(stat -c %W $FILE)
+    #t2=$(date +%s)
     cat <<STAT_INFO
 Start Time:                  $start_time
 First Data registering Time: $(stat -c %w $DATAFILE)

@@ -86,6 +86,5 @@ def get_parsed (args=None):
     return parsed
 
 if __name__ == '__main__':
-    print(sys.path,calendar)#,calendar.Calendar())
     args = get_parsed()
     print_cal(make_cal(args.year, args.month), args.header, args.cols)
