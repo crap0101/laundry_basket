@@ -88,8 +88,8 @@ function getstat () {
     cat <<STAT_INFO
 Start Time:                  $start_time
 First Data registering Time: $(stat -c %w $DATAFILE)
-Current Time:                $(date '+%F %T')
-Total runs: ${total}$(runtime_info)
+Current Time:                $(date '+%F %T')$(runtime_info)
+Total runs: ${total}
 Succeed: $succeed ($(( succeed * 100 / total ))%)
 Failed: $failed ($(( failed * 100 / total ))%)
 Last: $last
