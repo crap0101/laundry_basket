@@ -28,6 +28,7 @@ import os
 import random
 import re
 import sys
+import time
 from urllib.request import build_opener, URLError
 # external:
 from bs4 import BeautifulSoup
@@ -54,6 +55,17 @@ PARSERS = ["html.parser", "html5lib", "lxml-xml", "lxml"]
 RE_PATTERN = '[/:\\!]'
 CHAR_REPLACEMENT = '_'
 EXTENSIONS = ('.html', '.xml')
+DATE_OPT = ('FN', 'FT')
+DATE_METAVAR = 'STR'
+DATE_HELP = f'''
+Append a date to the output filename.
+{DATE_METAVAR} can be:
+"FN" to use the document's date found, or nothing if not found,
+"FT" to use the document's date found or the date of the present day (YYYY-MM-DD) if not found,
+Apart from these special values, any other value is considered as a custom date string to be used raw.
+'''
+DATE_SEPARATOR = '_'
+DATE_PROPERTIES = ('article:modified_time', 'article:published_time', 'og:updated_time')
 USER_AGENT_LIST = [
     ('User-agent', 'Mozilla/5.0'),
     ('User-agent','Chrome/Android: Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36'),
@@ -98,6 +110,37 @@ def check_for_beauty (buff, size=2048) -> (bool, str):
         return False, data
     return True, data
 
+
+def find_date (data: [BeautifulSoup|FakeBS]) -> str:
+    if isinstance(data, FakeBS):
+        return ''
+    where = True # "meta"
+    for prop in DATE_PROPERTIES:
+        if (p := data.find(where, property=prop)):
+            # should be in ISO8601 format, keep only YYYY-MM-DD
+            return p['content'][:10]
+    return ''
+
+
+def _get_date (date_opt, date_sep):
+    if date_opt is None:
+        f = lambda a: ''
+        return f
+    elif date_opt == DATE_OPT[0]:
+        def __get_date_or_nothing (arg):
+            s = find_date(arg)
+            return s if not s else date_sep + s
+        return __get_date_or_nothing
+    elif date_opt == DATE_OPT[1]:
+        def __get_date_or_now (arg):
+            s = find_date(arg)
+            return date_sep + s if s else date_sep + time.strftime("%Y-%m-%d")
+        return __get_date_or_now
+    else:
+        cf = lambda a: date_sep + date_opt
+        return cf
+
+
 def get_data (opener, url, parser) -> (bool, [BeautifulSoup|FakeBS]):
     """
     Tries to read from $url using $opener and (for BeautifulSoup) $parser,
@@ -136,7 +179,7 @@ def writefile (outfile, bs, encoding='utf-8') -> (bool, [int|Exception]):
         return False, err
 
 
-def doit(opener, url, dest, parser_name, regex, replacement, extension):
+def doit (opener, url, dest, parser_name, regex, replacement, extension, datefunc):
     """
     Do the job.
     """
@@ -149,6 +192,7 @@ def doit(opener, url, dest, parser_name, regex, replacement, extension):
     else:
         data.title = regex.sub(replacement, url.split('/')[-1].strip())
     if os.path.isdir(dest):
+        data.title += datefunc(data)
         dest = os.path.join(dest, data.title)
         if extension is not None:
             dest += extension
@@ -161,11 +205,18 @@ def doit(opener, url, dest, parser_name, regex, replacement, extension):
     return True
 
 
-def get_parser():
+def get_parser ():
     """Returns an argparse's parser object."""
     parser = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("-d", "--append-date",
+                        dest='date', default=None, metavar=DATE_METAVAR,
+                        help=DATE_HELP)
+    parser.add_argument('-D', '--date-separator',
+                        dest='date_sep', default='_', metavar='STR',
+                        help='''when appending the date to the filename, use %(metavar)s
+                        as separator, default: "%(default)s"''')
     parser.add_argument("-e", "--extension",
                         dest="extension", default=None,  metavar="STR",
                         help='''Use STR as the output filename's extension,
@@ -218,9 +269,10 @@ def get_parser():
                         help='''Save on %(metavar)s. If a directory, uses by
                         default the input data's title tag for the filename.
                         If a path to a new regular file, use that ignoring
-                        the value of the -e option.
+                        the value of the -d and -e options.
                         If not provided, write on stdout.''')
     return parser
+
 
 if __name__ == '__main__':
     parser = get_parser()
@@ -229,7 +281,6 @@ if __name__ == '__main__':
     pywarn.set_showwarning(pywarn.bare_showwarning)
     pywarn.set_filter(parsed.warn_type, pywarn.CustomWarning)
 
-    
     parsed.replace_regex = re.compile(parsed.replace_regex)
     if not parsed.dest:
         parsed.dest = sys.stdout.fileno()
@@ -240,4 +291,4 @@ if __name__ == '__main__':
         opener.addheaders = [random.choice(USER_AGENT_LIST)]
     sys.exit(not doit(opener, parsed.url, parsed.dest, parsed.default_parser,
                       parsed.replace_regex, parsed.replace_chars,
-                      parsed.extension))
+                      parsed.extension, _get_date(parsed.date, parsed.date_sep)))
