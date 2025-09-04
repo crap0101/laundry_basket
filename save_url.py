@@ -62,7 +62,7 @@ Append a date to the output filename.
 {DATE_METAVAR} can be:
 "FN" to use the document's date found, or nothing if not found,
 "FT" to use the document's date found or the date of the present day (YYYY-MM-DD) if not found,
-Except from these special values, any other value is considered as a custom date string to be used raw.
+Except these special values, any other value is considered as a custom date string to be used raw.
 '''
 DATE_SEPARATOR = '_'
 DATE_PROPERTIES = ('article:modified_time', 'article:published_time', 'og:updated_time')
