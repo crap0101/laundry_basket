@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2024  Marco Chieppa | crap0101
+# Copyright (c) 2024-2025  Marco Chieppa | crap0101
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -37,8 +37,8 @@ import magic
 from py_warnings import pywarn
 
 PROGNAME = 'save_url'
-VERSION = '0.23'
-LAST_UPDATE = '2025-08-19'
+VERSION = '0.24'
+LAST_UPDATE = '2025-09-04'
 
 __doc__ = f'''==================================
 {PROGNAME} v{VERSION} ({LAST_UPDATE})
