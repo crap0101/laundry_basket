@@ -40,6 +40,72 @@ def frange (start: Number, stop: Number, step: Number=1) -> Iterator[Number]:
         start += step
 
 
+def mad_max (iterable, default=[], key=lambda x:x):
+    """
+    Return the biggest ITEMS from *iterable*.
+    *default* specifies an object to return if
+    the provided iterable is empty.
+    *key* is a callable applied on every item, the results
+    of key(item) is used for the comparison (default to
+    the identity function).
+    """
+    iterable = iter(iterable)
+    founds = []
+    try:
+        first = next(iterable)
+        max = key(first)
+        founds.append(first)
+    except StopIteration:
+        return default
+    for item in iterable:
+        this = key(item)
+        if this > max:
+            max = this
+            founds = [item]
+        elif max == this:
+            founds.append(item)
+    return founds
+
+
+def minmax (seq):
+    """
+    Returns the min() and max() value of $seq.
+    Raise ValueError if $seq is empty.
+    >>> minmax(range(-10,10))
+    (-10, 9)
+    >>> minmax([1])
+    (1, 1)
+    >>> minmax('foobar')
+    ('a', 'r')
+    """
+    for i in seq:
+        imin = imax = i
+        break
+    for i in seq:
+        if i < imin:
+            imin = i
+        elif i > imax:
+            imax = i
+    try:
+        return (imin, imax)
+    except UnboundLocalError:
+        raise ValueError('minmax(): empty sequence') from None
+
+
+def remove_dup (seq):
+    """Removes duplicated items in $seq, keeping the original order."""
+    new = []
+    lst = list(seq) # for iterable $seq
+    s = set(lst)
+    for x in lst:
+        if not s:
+            break
+        if x in s:
+            new.append(x)
+            s.remove(x)
+    return new
+
+
 def secs2time (secs: Number) -> (int, int, int, int):
     """
     Return a time-tuple of (days, hours, minutes, seconds)
@@ -136,16 +202,55 @@ def sub_split (s, min=2):
 
 
 def _test_frange ():
-    print('*** Test frange: ', end='')
     args = ([10, 2, -2], [10, 2, 2], [10, 22, -2], [10, 22, 2])
     for arg in args:
         assert list(range(*arg)) == list(frange(*arg))
     assert list(frange(10, 12, 0.5)) == [10, 10.5, 11.0, 11.5]
-    print('ok')
+    return True
+
+def _test_minmax():
+    from random import randint
+    assert minmax([1]) == (1,1)
+    try:
+        raised = 0
+        x = minmax([])
+    except ValueError:
+        raised = 1
+    if not raised:
+        raise AssertionError(f"minmax([]): no error? ({x})")
+    tocheck = [[randint(-1000,1000) for _ in range(100)] for _ in range(100)]
+    for seq in tocheck:
+        imin, imax = minmax(seq)
+        smin, smax = min(seq), max(seq)
+        assert imin == smin and imax == smax, f'FAIL: minmax:({imin},{imax}) != ({smin},{smax}) | seq: {seq}'
+    return True
+
+def _test_mad_max():
+    from random import shuffle
+    limit = 10000
+    l1 = list(range(1, limit))
+    l2 = l1.copy()
+    shuffle(l2)
+    l1.extend(l2)
+    lmax = mad_max(l1)
+    assert len(lmax) == 2, f'FAIL: mad_max: wrong len!'
+    assert len(set(lmax)) == 1, f'FAIL: mad_max: values differs!'
+    assert lmax[0] == limit - 1, f'FAIL: mad_max: not really the max!'
+    return True
+
+def _test_remove_dup ():
+    tocheck = [([1,2,3,4, 1],[1,2,3,4]),
+             ([1,2,3,1,5,6,6,4],[1,2,3,5,6,4]),
+             ([],[]),
+             ([1],[1]),
+             ([1, 4, 3, 2],[1, 4, 3, 2]),
+    ]
+    for initial, result in tocheck:
+        assert remove_dup(initial) == result, f'FAIL: remove_dup: {initial} != {result}'
+    return True
 
 def _test_split ():
     from random import randint as r
-    print('*** Test splitting: ', end='')
     for _ in range(100):
         pieces = list(filter(None, [list(range(1, r(1,30)))
                                     for __ in range(5, r(10,20))]))
@@ -173,7 +278,7 @@ def _test_split ():
     for lst, indexes, res in triplets:
         assert list(split_at(lst, indexes)) == res, f'[FAIL]: {lst} != {res}'
         assert list(split_at(lst, indexes, 'at')) == res, f'[FAIL]: {lst} != {res}'
-    print('OK')
+    return True
 
 def _test_split_cmp ():
     """compare with others methods:
@@ -200,9 +305,8 @@ def _test_split_cmp ():
     """
     from random import randint as r
     import numpy as np
-    print('*** Test compare')
-    print('* compare with numpy.array_split: ', end='')
     llen = 1000
+    # compare with numpy.array_split:
     for _ in range(100):
         lst = list(range(llen))
         # unique and sorted indexes, for the reasons written in the docstring
@@ -212,8 +316,7 @@ def _test_split_cmp ():
         assert s1 == s2, f'''[FAIL] split_at: {s1}
 != numpy.array_split: {s2}
 indexes: {indexes}'''
-    print('OK')
-    print('* compare with split_at_with_axe: ', end='')
+    # compare with split_at_with_axe:
     for _ in range(100):
         lst = list(range(llen))
         # unique and sorted indexes, for the reasons written in the docstring
@@ -223,13 +326,13 @@ indexes: {indexes}'''
         assert s1 == s2, f'''[FAIL] split_at: {s1}
 != split_at_with_axe: {s2}
 indexes: {indexes}'''
-    print('OK')
-    
-def _test_split_time ():
+    return True
+
+def _split_time ():
     import timeit
     from random import randint as r 
     from numpy import array_split
-    print('*** Test times')
+    print('* Times:')
     llen = r(10, 1000000)
     lst = list(range(llen))
     indexes = sorted(set(r(0, llen) for _ in range(r(0,llen))))
@@ -247,11 +350,14 @@ def _test_split_time ():
     print(report.format('array_split', time))
 
 def _test ():
-    _test_frange()
-    _test_split()
-    _test_split_cmp()
-    _test_split_time()
-
+    print('* Run tests:')
+    _test_frange() and print('  Test frange: OK')
+    _test_minmax() and print('  Test minmax: OK')
+    _test_mad_max() and print('  Test mad_max: OK')
+    _test_remove_dup() and print('  Test remove_dup: OK')
+    _test_split() and print('  Test splitting: OK')
+    _test_split_cmp() and print('  Test splitting (compare): OK')
+    _split_time()
 
 ################
 ##### MAIN #####
@@ -294,24 +400,14 @@ indexes: [3, 5, 7, 9, 15]
 [10, 11, 12, 13, 14, 15]
 [16, 17, 18, 19]
 crap0101@orange:~/test$ python3 split_index.py -t
-*** Test splitting: OK
-*** Test compare
-* compare with numpy.array_split: OK
-* compare with split_at_with_axe: OK
-*** Test times
-(list len = 664906 | indexes = 18105 | repeats = 50)
-split_at            : 0.2244s
-split_at_with_axe   : 0.0345s
-array_split         : 0.1239s
-crap0101@orange:~/test$ python3 split_index.py -t
-*** Test splitting: OK
-*** Test compare
-* compare with numpy.array_split: OK
-* compare with split_at_with_axe: OK
-*** Test times
-(list len = 598331 | indexes = 232487 | repeats = 50)
-split_at            : 0.4121s
-split_at_with_axe   : 0.1150s
-array_split         : 0.7606s
+* Run tests:
+  Test frange: OK
+  Test remove_dup: OK
+  Test splitting: OK
+Test splitting (compare): OK
+* Times:
+(list len = 927786 | indexes = 402184 | repeats = 50)
+split_at            : 0.1521s
+split_at_with_axe   : 0.0667s
+array_split         : 0.2623s
 """
-
