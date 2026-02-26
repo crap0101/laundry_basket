@@ -24,6 +24,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import errno
 import os
 import random
 import re
@@ -98,6 +99,7 @@ class FakeBS:
     def prettify (self):
         return self.data
 
+
 def check_for_beauty (buff, size=2048) -> (bool, str):
     """
     Checks the filetype reading $size chars from $buff,
@@ -121,6 +123,28 @@ def find_date (data: [BeautifulSoup|FakeBS]) -> str:
             return p['content'][:10]
     return ''
 
+
+def fit_filename_too_long (filename: str) -> str:
+    """Resize $filename to a decent size, preserving the extension (anything after the last dot, if realiable)."""
+    try:
+        name, ext = re.match('^(.*)(\.\w+)$', filename).groups()
+    except AttributeError:
+        # if, for some reason no '.' in the filename, shorten anyway
+        name, ext = filename, ''
+    if len(name) < len(ext):
+        # if, for example filename is like 'a.html', or for strange things like 'foo.spamspamspamspamspamspamspamspam[...and so on]'
+        name, ext = name + ext, ''
+    while True:
+        try:
+            with open(name + ext, 'wb') as f:
+                #print(f'ok: len is {len(name + ext)}')
+                break
+        except OSError as e:
+            if e.errno == errno.ENAMETOOLONG:
+                #print(f"name too long ({len(name + ext)})")
+                # shortened name length about 5% approx
+                name = name[:len(name) - int(5 * len(name) / 100 + 1)]
+    return name + ext
 
 def _get_date (date_opt, date_sep):
     if date_opt is None:
@@ -193,11 +217,12 @@ def doit (opener, url, dest, parser_name, regex, replacement, extension, datefun
         data.title = regex.sub(replacement, url.split('/')[-1].strip())
     if os.path.isdir(dest):
         data.title += datefunc(data)
-        dest = os.path.join(dest, data.title)
         if extension is not None:
-            dest += extension
+            data.title += extension
         elif not isinstance(data, FakeBS):
-            dest += EXTENSIONS[data.is_xml]
+            data.title += EXTENSIONS[data.is_xml]
+        filename = fit_filename_too_long(data.title)
+        dest = os.path.join(dest, filename)
     ok, val = writefile(dest, data)
     if not ok:
         pywarn.warn(pywarn.CustomWarning(f'ERROR with {url}: {val}'))
