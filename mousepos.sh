@@ -51,7 +51,7 @@ do
 	else
 	    msg="mouse click at $xpos,$ypos (delta: $((xpos - xprev)),$((ypos - yprev)))"
 	fi
-	if [ 0 -eq $continuous ] || ([ 1 -eq $continuous ] && [ $xpos -ne $xprev ] && [ $ypos -ne $yprev ]); then
+	if [ 0 -eq $continuous ] || ([ $xpos -ne $xprev ] || [ $ypos -ne $yprev ]); then
 	    echo $msg
 	fi
 	xprev=$xpos
