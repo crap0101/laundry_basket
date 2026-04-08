@@ -77,6 +77,15 @@ buffer's lines, go to the last line."
   (deactivate-mark)
   (isearch-yank-string (buffer-substring-no-properties start end)))
 
+; open file from region
+(defun open-file-from-region (start end)
+  "open the filename from the region in the current buffer"
+  (interactive "r")
+  (deactivate-mark)
+  (switch-to-buffer
+    (find-file-noselect
+      (buffer-substring-no-properties start end)  nil nil nil)))
+
 ; insert date
 (defun insert-date (prefix)
     "Insert the current date."
@@ -131,7 +140,10 @@ buffer's lines, go to the last line."
 ;; for previously defined functions
 (global-set-key "\C-cg" 'go-line)
 (global-set-key "\C-c\C-c" 'copy-lines)
+;; C-c C-c for copy the current line
+;; C-u N C-c C-c to copy N lines
 (global-set-key (kbd "C-S-s") 'search-region)
+(global-set-key (kbd "C-c C-f") 'open-file-from-region)
 (global-set-key (kbd "C-c d") 'insert-date)
 (global-set-key (kbd "M-s") (lambda () (interactive) (number-to-subscript)))
 (global-set-key [f2] 'run-python-program)
