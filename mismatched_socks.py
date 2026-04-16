@@ -48,6 +48,15 @@ def mad_max (iterable, default=(), key=lambda x:x):
     *key* is a callable applied on every item, the results
     of key(item) is used for the comparison (default to
     the identity function).
+    >>> mad_max(range(9))
+    [8]
+    >>> mad_max([1,2,2,2,3,4,5,5])
+    [5, 5]
+    >>> d=[('a',1),('b',1),('c',2),('d',2)]
+    >>> mad_max(d)
+    [('d', 2)]
+    >>> mad_max(d, key=lambda x:x[1])
+    [('c', 2), ('d', 2)]
     """
     iterable = iter(iterable)
     founds = []
