@@ -40,7 +40,7 @@ def frange (start: Number, stop: Number, step: Number=1) -> Iterator[Number]:
         start += step
 
 
-def mad_max (iterable, default=[], key=lambda x:x):
+def mad_max (iterable, default=(), key=lambda x:x):
     """
     Return the biggest ITEMS from *iterable*.
     *default* specifies an object to return if
