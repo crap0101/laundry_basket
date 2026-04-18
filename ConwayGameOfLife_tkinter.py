@@ -44,7 +44,7 @@ import random
 import time
 import tkinter
 # https://github.com/crap0101/mad_math
-from mad_math.mad_math import in_perc_range
+from mad_math.mmath import in_perc_range
 
 STICKY = tkinter.N+tkinter.W+tkinter.S+tkinter.E
 
