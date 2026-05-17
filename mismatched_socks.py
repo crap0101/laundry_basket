@@ -18,10 +18,46 @@
 # along with this program; if not see <http://www.gnu.org/licenses/>   
 
 
+from collections.abc import Callable, Sequence
+import datetime
 import itertools
 from numbers import Number
 import operator
-from typing import Iterator, List, Sequence
+from typing import Iterator, List
+
+
+def date_range (start: datetime.date|str,
+                end: datetime.date|str,
+                filter: Callable = lambda x:True,
+                include_end: bool = True) -> Sequence[datetime.date, ...]:
+    """
+    Returns a sequence of date objects from $start to $end (included, $include_end default to True).
+    $start and $end can be datetime.date objects or string in iso format like 'YYYY-MM-DD'.
+    $filter is a callable to filter the produced datetime.date objects.
+    >>> date_range('2026-05-11', datetime.date(2026, 5, 14))
+    [datetime.date(2026, 5, 11), datetime.date(2026, 5, 12), datetime.date(2026, 5, 13), datetime.date(2026, 5, 14)]
+    >>> date_range(datetime.date(2026, 5, 11), '2026-05-14', include_end=False)
+    [datetime.date(2026, 5, 11), datetime.date(2026, 5, 12), datetime.date(2026, 5, 13)]
+    >>> date_range(datetime.date(2026, 5, 11), '2026-05-14', lambda t:t.weekday() not in (1,2))
+    [datetime.date(2026, 5, 11), datetime.date(2026, 5, 14)]
+    >>> date_range('2026-05-11', datetime.date(2026, 5, 1))
+    []
+    """
+    if not isinstance(start, (datetime.date, str)):
+        raise ValueError(f"wrong date type for start: '{start}'")
+    if isinstance(start, str):
+        start = datetime.date.fromisoformat(start)
+    if not isinstance(end, (datetime.date, str)):
+        raise ValueError(f"wrong date type for end: '{end}'")
+    if isinstance(end, str):
+        end = datetime.date.fromisoformat(end)
+    end += datetime.timedelta(include_end)
+    dates = []
+    while start < end:
+        if filter(start):
+            dates.append(start)
+        start += datetime.timedelta(1)
+    return dates
 
 
 def frange (start: Number, stop: Number, step: Number=1) -> Iterator[Number]:
