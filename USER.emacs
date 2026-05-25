@@ -190,7 +190,7 @@ buffer's lines, go to the last line."
       tab-width 4
       term-input-autoexpand t
       x-select-enable-clipboard t)
-(setq-default fill-column 75)
+(setq-default fill-column 140)
 
 ;; columns and rows
 (line-number-mode t)
