@@ -82,6 +82,13 @@ buffer's lines, go to the last line."
   (deactivate-mark)
   (isearch-yank-string (buffer-substring-no-properties start end)))
 
+;; uppercase region
+(defun uppercase-region (start end)
+  "uppercase the region of the current buffer."
+  (interactive "r")  
+  (deactivate-mark)
+  (upcase-region start end))
+
 ;; open file from region
 (defun open-file-from-region (start end)
   "open the filename from the region in the current buffer"
@@ -150,6 +157,7 @@ buffer's lines, go to the last line."
 (global-set-key (kbd "C-S-s") 'search-region)
 (global-set-key (kbd "C-c C-f") 'open-file-from-region)
 (global-set-key (kbd "C-c d") 'insert-date)
+(global-set-key (kbd "C-c u") 'uppercase-region)
 (global-set-key (kbd "M-s") (lambda () (interactive) (number-to-subscript)))
 (global-set-key [f2] 'run-python-program)
 (global-set-key [f3] 'run-pythonXY-program)
