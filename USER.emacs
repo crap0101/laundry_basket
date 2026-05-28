@@ -178,29 +178,29 @@ buffer's lines, go to the last line."
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; http://lists.gnu.org/archive/html/emacs-devel/2011-09/msg00350.html
-(setq redisplay-dont-pause t)
+(setq-default redisplay-dont-pause t)
 
 ;; https://lists.gnu.org/archive/html/bug-gnu-emacs/2010-11/msg00243.html
-(setq focus-follows-mouse nil)
+(setq-default focus-follows-mouse nil)
 
 ;; keep the cursor at the same screen position whenever a scroll command moves it off-window
-(setq scroll-preserve-screen-position t)
+(setq-default scroll-preserve-screen-position t)
 
 ;; browser
-(setq browse-url-browser-function 'browse-url-firefox
-      browse-url-firefox-program "firefox-esr")
+(setq-default browse-url-browser-function 'browse-url-firefox
+	      browse-url-firefox-program "firefox-esr")
 
 ;; no beep
-(setq visible-bell t)
+(setq-default visible-bell t)
 
 ;; text related
-(setq indent-tabs-mode nil
-      tab-width 4
-      term-input-autoexpand t
-      x-select-enable-clipboard t)
+(setq-default indent-tabs-mode nil
+	      tab-width 4
+	      term-input-autoexpand t
+	      x-select-enable-clipboard t)
 ; for C-q
 (setq-default fill-column 150)
-(setq sentence-end-double-space nil)
+(setq-default sentence-end-double-space nil)
 
 ;; columns and rows
 (line-number-mode t)
