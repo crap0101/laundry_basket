@@ -198,7 +198,9 @@ buffer's lines, go to the last line."
       tab-width 4
       term-input-autoexpand t
       x-select-enable-clipboard t)
-(setq-default fill-column 140)
+; for C-q
+(setq-default fill-column 150)
+(setq sentence-end-double-space nil)
 
 ;; columns and rows
 (line-number-mode t)
