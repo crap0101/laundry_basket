@@ -18,7 +18,7 @@ else
     INPUTFILE="$1"
 fi
 
-awk '$1 ~ /^\// {printf "\"%s\" ", $0}' ~/0.cajaopentabs | xargs caja -t
+awk '$1 ~ /^\// {printf "\"%s\" ", $0}' "$INPUTFILE" | xargs caja -t
 
 # or:
-#sed -e 's/^\/.*$/\"&\"/g' -e '/^#/d' 0.cajaopentabs | xargs caja -t
+#sed -e 's/^\/.*$/\"&\"/g' -e '/^#/d' "$INPUTFILE" | xargs caja -t
