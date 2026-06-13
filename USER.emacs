@@ -89,9 +89,23 @@ buffer's lines, go to the last line."
   (deactivate-mark)
   (upcase-region start end))
 
+;; downcase region
+(defun lowercase-region (start end)
+  "lowercase the region of the current buffer."
+  (interactive "r")  
+  (deactivate-mark)
+  (downcase-region start end))
+
+;; capitalize region
+(defun cap-region (start end)
+  "capitalize the region of the current buffer."
+  (interactive "r")  
+  (deactivate-mark)
+  (capitalize-region start end))
+
 ;; open file from region
 (defun open-file-from-region (start end)
-  "open the filename from the region in the current buffer"
+  "open the filename from the region of the current buffer"
   (interactive "r")
   (deactivate-mark)
   (switch-to-buffer
@@ -158,6 +172,8 @@ buffer's lines, go to the last line."
 (global-set-key (kbd "C-c C-f") 'open-file-from-region)
 (global-set-key (kbd "C-c d") 'insert-date)
 (global-set-key (kbd "C-c u") 'uppercase-region)
+(global-set-key (kbd "C-c l") 'lowercase-region)
+(global-set-key (kbd "C-c c") 'cap-region)
 (global-set-key (kbd "M-s") (lambda () (interactive) (number-to-subscript)))
 (global-set-key [f2] 'run-python-program)
 (global-set-key [f3] 'run-pythonXY-program)
