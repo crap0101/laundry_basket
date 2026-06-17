@@ -4,14 +4,14 @@
 function usage () {
     cat <<HELP
 DESCRIPTION: run ping again and again, saving statistical informations.
-SYNOPSIS: $(basename "$0") -h|COMMAND [OPTIONS]
+SYNOPSIS: $(basename "$0") -h|COMMAND
     COMMAND can be:
         start    Start pinging.
-	stop     Stop pinging.
+	    stop     Stop pinging.
         stat     Show statistical informations.
-    OTHER OPTIONS:
-        -h         show this help and exit.
-OPTIONAL:
+    OPTIONS:
+        -h       Show this help and exit.
+OPTIONAL TOOLS:
     For runtime info: https://github.com/crap0101/laundry_basket/blob/master/secs2time.sh
 HELP
 }

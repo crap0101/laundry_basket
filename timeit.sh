@@ -15,11 +15,12 @@ rep=1000
 
 case "$1" in
     -h|--help|"")
-	usage
-	exit 1;;
+	    usage
+	    exit 1
+        ;;
     +([0-9]))
         rep=$1
-	shift;;
+        shift;;
 esac
 
 if [[ $# -eq 0 ]]; then
