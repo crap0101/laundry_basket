@@ -5,8 +5,11 @@
 
 function usage () {
     cat <<HELP
-DESCRIPTION: track mouse position using xinput
-SYNOPSIS: $(basename "$0") [OPTION]...
+DESCRIPTION:
+    track mouse position using xinput
+SYNOPSIS:
+    $(basename "$0") [OPTIONS]
+OPTIONS:
     -c         continuous tracking
     -d         show positions delta between two mouse (left) click events
     -s VALUE   sleep amount (in seconds) between queries (default: $sleep_time)
