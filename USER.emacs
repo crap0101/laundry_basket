@@ -46,6 +46,10 @@
   (server-start)
   (message (format "server started (%s)" (server-running-p))))
 
+;; recentf
+(require 'recentf)
+(recentf-mode 1)
+(add-hook 'buffer-list-update-hook 'recentf-track-opened-file)
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; custom functions ;;
