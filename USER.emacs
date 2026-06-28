@@ -242,7 +242,7 @@ buffer's lines, go to the last line."
                     :underline nil
                     :slant 'normal
                     :weight 'normal
-                    :height 120
+                    :height 140
                     :width 'normal
                     :family "DejaVu Sans Mono")
 (set-face-attribute 'region nil :background "#666666")
