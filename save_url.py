@@ -127,7 +127,7 @@ def find_date (data: [BeautifulSoup|FakeBS]) -> str:
 def fit_filename_too_long (filename: str) -> str:
     """Resize $filename to a decent size, preserving the extension (anything after the last dot, if realiable)."""
     try:
-        name, ext = re.match('^(.*)(\.\w+)$', filename).groups()
+        name, ext = re.match(r'^(.*)(\.\w+)$', filename).groups()
     except AttributeError:
         # if, for some reason no '.' in the filename, shorten anyway
         name, ext = filename, ''
