@@ -135,13 +135,14 @@ def fit_filename_too_long (filename: str) -> str:
         # if, for example filename is like 'a.html', or for strange things like 'foo.spamspamspamspamspamspamspamspam[...and so on]'
         name, ext = name + ext, ''
     while True:
+        # general method, system agnostic, only for the filename (not the entire path)
         try:
             with open(name + ext, 'wb') as f:
-                #print(f'ok: len is {len(name + ext)}')
-                break
+                pass
+            os.remove(name + ext)
+            break
         except OSError as e:
             if e.errno == errno.ENAMETOOLONG:
-                #print(f"name too long ({len(name + ext)})")
                 # shortened name length about 5% approx
                 name = name[:len(name) - int(5 * len(name) / 100 + 1)]
     return name + ext
