@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2024-2025  Marco Chieppa | crap0101
+# Copyright (c) 2024-2026  Marco Chieppa | crap0101
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -124,8 +124,12 @@ def find_date (data: [BeautifulSoup|FakeBS]) -> str:
     return ''
 
 
-def fit_filename_too_long (filename: str) -> str:
-    """Resize $filename to a decent size, preserving the extension (anything after the last dot, if realiable)."""
+def fit_filename_too_long (filename: str, basepath: str = '') -> str:
+    """
+    Resize $filename to a decent size, preserving the extension (anything after the last dot, if realiable).
+    $basepath can be the directory path in which the file will be written, to be used to check if the total path
+    is also too long.
+    Raises OSError if no meaningfull filename/path can be created."""
     try:
         name, ext = re.match(r'^(.*)(\.\w+)$', filename).groups()
     except AttributeError:
@@ -135,16 +139,19 @@ def fit_filename_too_long (filename: str) -> str:
         # if, for example filename is like 'a.html', or for strange things like 'foo.spamspamspamspamspamspamspamspam[...and so on]'
         name, ext = name + ext, ''
     while True:
-        # general method, system agnostic, only for the filename (not the entire path)
+        # general method, system agnostic
         try:
-            with open(name + ext, 'wb') as f:
+            destination = os.path.join(basepath, name + ext)
+            with open(destination, 'wb') as f:
                 pass
-            os.remove(name + ext)
+            os.remove(destination)
             break
         except OSError as e:
             if e.errno == errno.ENAMETOOLONG:
                 # shortened name length about 5% approx
                 name = name[:len(name) - int(5 * len(name) / 100 + 1)]
+                if not name:
+                    raise OSError('Destination path too long for this system!')
     return name + ext
 
 def _get_date (date_opt, date_sep):
@@ -222,7 +229,11 @@ def doit (opener, url, dest, parser_name, regex, replacement, extension, datefun
             data.title += extension
         elif not isinstance(data, FakeBS):
             data.title += EXTENSIONS[data.is_xml]
-        filename = fit_filename_too_long(data.title)
+        try:
+            filename = fit_filename_too_long(data.title, dest)
+        except OSError as e:
+            pywarn.warn(pywarn.CustomWarning(f'ERROR with {url}: {e}'))
+            return False            
         dest = os.path.join(dest, filename)
     ok, val = writefile(dest, data)
     if not ok:
