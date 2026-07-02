@@ -223,6 +223,8 @@ def doit (opener, url, dest, parser_name, regex, replacement, extension, datefun
         data.title = regex.sub(replacement, title.get_text().strip())
     else:
         data.title = regex.sub(replacement, url.split('/')[-1].strip())
+    if not data.title: # no clue about the title, use the url
+        data.title = url.translate(str.maketrans(':/.', '__-'))
     if os.path.isdir(dest):
         data.title += datefunc(data)
         if extension is not None:
@@ -235,9 +237,13 @@ def doit (opener, url, dest, parser_name, regex, replacement, extension, datefun
             pywarn.warn(pywarn.CustomWarning(f'ERROR with {url}: {e}'))
             return False            
         dest = os.path.join(dest, filename)
-    ok, val = writefile(dest, data)
+    ok, written = writefile(dest, data)
     if not ok:
         pywarn.warn(pywarn.CustomWarning(f'ERROR with {url}: {val}'))
+        return False
+    if not written:
+        pywarn.warn(pywarn.CustomWarning(f'ERROR with {url}: empty file'))
+        os.remove(dest)
         return False
     return True
 
