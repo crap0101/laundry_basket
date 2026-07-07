@@ -17,10 +17,43 @@
 # along with this program; if not see <http://www.gnu.org/licenses/>
 
 
+function usage () {
+    cat <<HELP
+DESCRIPTION: converts time expressed in seconds
+    # SECONDS: a number representing seconds
+    # FLAG: if given, prints in machine-readable format as "DD:HH:MM:SS" printing days even if 0.
+    #       Otherwise, when days are 0 print only "HH:MM:SS" or, when days are > 0 print "DD days HH:MM:SS"
+SYNOPSIS: $(basename "$0") [-hd] SECONDS
+    -d         see FLAG description
+    -h         show this help and exit.
+HELP
+}
+
+if [ $# -eq 0 ]
+then
+    usage $0
+    exit 1
+fi
+
+days=0
+while getopts "dh" arg
+do
+    case $arg in
+        d)
+            days=1
+            ;;
+        *|h)
+	        usage $0
+            exit 0
+    esac
+done
+shift $(($OPTIND - 1))
+
+
 function secs2time () {
     # $1: a number representing seconds
     # $2: (optional) if "1" print in machine-readable format as "DD:HH:MM:SS"
-    #     printg days even if 0.
+    #     printing days even if 0.
     #     Otherwise, when days are 0 print only "HH:MM:SS" or,
     #     when days are > 0 print "DD days HH:MM:SS"
     days=$(( $1 / (60*60*24) ))
@@ -44,4 +77,4 @@ function secs2time () {
     fi
 }
 
-secs2time "$1" "$2"
+secs2time "$1" $days
