@@ -52,7 +52,7 @@ def get_cpu(only_main=False):
     _cpu_s = []
     with open('/proc/stat') as stats:
         for line in stats:
-            match = re.match('^cpu(\d+)?\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)', line)
+            match = re.match(r'^cpu(\d+)?\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)', line)
             if match:
                 groups = match.groups()
                 p = CpuStat(*map(float, groups[1:]))

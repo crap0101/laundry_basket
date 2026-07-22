@@ -113,7 +113,7 @@ if __name__ == '__main__':
     """
     s = sys.stdin.read()
     table = list(map(lambda x: 0 if x == '.' else int(x),
-                     re.findall('(\d+|\.)', s, re.DOTALL)))
+                     re.findall(r'(\d+|\.)', s, re.DOTALL)))
     print(s)
     if not table:
         table = ex_table

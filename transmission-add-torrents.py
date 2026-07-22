@@ -8,7 +8,7 @@ import getpass
 import os.path
 import sys
 
-import transmissionrpc
+import transmission_rpc
 
 
 def get_args (args=None):
@@ -35,7 +35,7 @@ def get_args (args=None):
                           ' you will be asked for (if not provided)'))
     pg.add_argument('-n', '--no-pswd',
                     dest='no_pswd', action='store_true',
-                    help=('Use this option if yuo can connect without'
+                    help=('Use this option if you can connect without'
                           ' a password, otherwise you will be asked for'
                           ' (if not provided by the -p/--pswd option)'))
     return p, p.parse_args()
@@ -43,12 +43,12 @@ def get_args (args=None):
 
 def add_torrents (client, torrents, dest=None):
     if dest is None:
-        dest = client.session.download_dir
+        dest = client.get_session().download_dir
     failed = []
     for t in torrents:
         try:
             client.add_torrent(t, paused=False, download_dir=dest)
-        except transmissionrpc.TransmissionError as err:
+        except transmission_rpc.TransmissionError as err:
             failed.append((t, err))
     return failed
 
@@ -59,8 +59,8 @@ if __name__ == '__main__':
         if args.user is None:
             parser.error("authentication with password requires a username")
         args.pswd = getpass.getpass('password: ')
-    client = transmissionrpc.Client(args.host, port=args.port,
-                                    user=args.user, password=args.pswd)
+    client = transmission_rpc.Client(host=args.host, port=args.port,
+                                    username=args.user, password=args.pswd)
     fail = add_torrents(client, args.torrents, args.dest)
     if fail: #TODO: add log(s)
         prog = os.path.basename(sys.argv[0])

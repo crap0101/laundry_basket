@@ -15,7 +15,7 @@ if not hasattr(re, "NOFLAG"):
     setattr(re, "NOFLAG", 0) # added in python 3.11
 import sys
 
-import transmissionrpc
+import transmission_rpc
 
 _HOST = 'localhost'
 _PORT = 9091
@@ -49,23 +49,23 @@ def get_args (args=None):
                           ' you will be asked for (if not provided)'))
     pg.add_argument('-n', '--no-psw',
                     dest='no_psw', action='store_true',
-                    help=('Use this option if yuo can connect without'
+                    help=('Use this option if you can connect without'
                           ' a password, otherwise you will be asked for'
                           ' (if not provided by the -p/--psw option)'))
     return p, p.parse_args()
 
 
 def main (host, port, user, psw, out, regex, re_flag):
-        client = transmissionrpc.Client(address=host, port=port,
-                                user=user, password=psw)
+        client = transmission_rpc.Client(host=host, port=port,
+                                username=user, password=psw)
         torrents = client.get_torrents()
         if regex:
             for t in torrents:
                 if re.search(regex, t.name, re_flag):
-                    print(os.path.join(t.downloadDir, t.name), file=out)
+                    print(os.path.join(t.download_dir, t.name), file=out)
         else:
             for t in torrents:
-                print(os.path.join(t.downloadDir, t.name), file=out)
+                print(os.path.join(t.download_dir, t.name), file=out)
 
 
 if __name__ == '__main__':

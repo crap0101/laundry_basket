@@ -106,7 +106,7 @@ if __name__ == '__main__':
     p.add_argument('files', nargs='+', help='torrent files')
     p.add_argument('-A', '--announce',
                    dest='announce_tracker', default=None,
-                   help='add this tracker (or replace an existing one)'
+                   help='add this tracker (replacing an existing one)'
                    ' as the announce traker.')
     p.add_argument('-t', '--trackers',
                    nargs='*', dest='trackers', default=[],
@@ -141,11 +141,11 @@ if __name__ == '__main__':
                 if tr and not tr.startswith('#'):
                     from_file.append(bytes(tr, ENC))
             trackers.extend(from_file)
-    if not trackers:
+    if not trackers and not atracker:
         p.error("No trackers specified!")
     if args.remove:
         for file in args.files:
-            remove_trackers (file, trackers, backup, args.use_regex)        
+            remove_trackers(file, trackers, backup, args.use_regex)        
     else:
         for file in args.files:
             add_trackers(file, trackers, atracker, backup)

@@ -34,11 +34,11 @@ from xml.sax import parse
 from xml.sax import handler
 
 _VERSION = '0.6'
-DESCRIPTION = "search patterns in Ooo Calc file"
-
+DESCRIPTION = "search patterns in Ooo Calc files"
+USAGE = "usage: %prog [options] FILE ..."
 
 def check_command_line ():
-    parser = OptionParser(description=DESCRIPTION)
+    parser = OptionParser(usage=USAGE, description=DESCRIPTION)
     parser.add_option("-r", "--regex", dest="regex",
                       help="Search using regular expression", metavar="RE")
     parser.add_option("-S", "--stringify", action="store_true", dest="stringify",
@@ -165,6 +165,9 @@ class OOoSearch:
 if __name__ == '__main__':
     parser = check_command_line()
     options, args = parser.parse_args()
+    if not args:
+        print("No file!")
+        sys.exit(1)
     if options.version:
         print(_VERSION)
         sys.exit(0)

@@ -7,7 +7,7 @@ import argparse
 import getpass
 import re
 
-import transmissionrpc
+import transmission_rpc
 
 def get_args (args=None):
     p = argparse.ArgumentParser(
@@ -18,7 +18,7 @@ def get_args (args=None):
     p.add_argument('-P', '--port',
                    dest='port', type=int, default=9091,
                    help='Transmission RPC port (default: %(default)s)')
-    p.add_argument('-r', '--regex',
+    p.add_argument('-r', '--regex', # None by default, will be raise TypeError on purpose
                    dest='regex', metavar='STRING',
                    help="a regex matching tracker's name")
     p.add_argument('-s', '--simulate',
@@ -34,7 +34,7 @@ def get_args (args=None):
                           ' you will be asked for (if not provided)'))
     pg.add_argument('-n', '--no-pswd',
                     dest='no_pswd', action='store_true',
-                    help=('Use this option if yuo can connect without'
+                    help=('Use this option if you can connect without'
                           ' a password, otherwise you will be asked for'
                           ' (if not provided by the -p/--pswd option)'))
     return p, p.parse_args()
@@ -44,10 +44,10 @@ def show (torrents, regex):
     for torrent in torrents:
         trackers_to_remove = set()
         for t in torrent.trackers:
-            if reg.match(t['announce']):
-                trackers_to_remove.add(t['announce'])
-            if reg.match(t['scrape']):
-                trackers_to_remove.add(t['scrape'])
+            if reg.match(t.announce):
+                trackers_to_remove.add(t.announce)
+            if reg.match(t.scrape):
+                trackers_to_remove.add(t.scrape)
         if trackers_to_remove:
             print("remove from <{}> matches: <{}>".format(
                 torrent.name, list(trackers_to_remove)))
@@ -57,10 +57,11 @@ def remove (torrents, regex):
     for torrent in torrents:
         trackers_to_remove = []
         for tracker in torrent.trackers:
-            if reg.match(tracker['announce']) or reg.match(tracker['scrape']):
-                trackers_to_remove.append(tracker['id'])
+            if reg.match(tracker.announce) or reg.match(tracker.scrape):
+                trackers_to_remove.append(tracker.id)
         if trackers_to_remove:
             client.change_torrent(torrent.id, trackerRemove=trackers_to_remove)
+            # see TODO on more info # print("remove from <{}> matches: <{}>".format(torrent.name, list(trackers_to_remove)))
 
 if __name__ == '__main__':
     #XXX+TODO: show some more info
@@ -73,8 +74,8 @@ if __name__ == '__main__':
         doit = show
     else:
         doit = remove
-    client = transmissionrpc.Client(
-        args.host, port=args.port, user=args.user, password=args.pswd)
+    client = transmission_rpc.Client(
+        host=args.host, port=args.port, username=args.user, password=args.pswd)
     torrents = client.get_torrents()
     doit(torrents, args.regex)
 

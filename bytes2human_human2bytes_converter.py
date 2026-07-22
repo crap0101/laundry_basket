@@ -29,7 +29,7 @@
 import re
 import math
 
-_h2n_reg = re.compile('^(\d+|\d+\.\d+)\s*([a-zA-Z]+)$')
+_h2n_reg = re.compile(r'^(\d+|\d+\.\d+)\s*([a-zA-Z]+)$')
 
 SYMBOLS = {'c': ('B', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'),
            'c_ext': ('byte', 'kilo', 'mega', 'giga',
