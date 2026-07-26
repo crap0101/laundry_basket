@@ -7,6 +7,7 @@ import argparse
 import glob
 import json
 import os
+import sys
 #
 import lz4.block
 
@@ -31,6 +32,9 @@ def get_args (args=None):
                    dest='recovery_file_fullpath',
                    help="""browser's session recovery file, fullpath.
                    With this options -b, -B and -s options will be ignored.""")
+    p.add_argument('-o', '--output-file',
+                   dest='outputfile', default=sys.stdout, metavar='FILE',
+                   help='write on %(metavar)s, default: stdout.')
     p.add_argument('-s', '--subpath',
                    dest='recovery_subpath', default=RECOVERY_SUBPATH,
                    help="browser's session file subpath location: (%(default)s).")
@@ -66,5 +70,6 @@ if __name__ == '__main__':
         path = glob.glob(os.path.expanduser(session_file))[0]
     except (IndexError, OSError):
         raise OSError("can't find {}".format(session_file)) from None
-    for url in current_tabs_url(path, not args.no_decompress):
-        print(url)
+    with open(args.outputfile, 'w') if args.outputfile != sys.stdout else sys.stdout as out:
+        for url in current_tabs_url(path, not args.no_decompress):
+            print(url, file=out)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2011  Marco Chieppa (aka crap0101)
+# Copyright (C) 2011-2026  Marco Chieppa (aka crap0101)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -25,69 +25,80 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import re
+import argparse
+import io
 import os
+import re
 import sys
-import zipfile
-from optparse import OptionParser
 from xml.sax import parse
 from xml.sax import handler
+import zipfile
+from optparse import OptionParser
 
-_VERSION = '0.6'
+_VERSION = '0.7'
 DESCRIPTION = "search patterns in Ooo Calc files"
-USAGE = "usage: %prog [options] FILE ..."
 
 def check_command_line ():
-    parser = OptionParser(usage=USAGE, description=DESCRIPTION)
-    parser.add_option("-r", "--regex", dest="regex",
-                      help="Search using regular expression", metavar="RE")
-    parser.add_option("-S", "--stringify", action="store_true", dest="stringify",
-                      help="Search in the row as a string "
-                      "(only with -r/--regex, ignored otherwise)")
-    parser.add_option("-p", "--pattern", dest="pattern",
-                      help="search PATTERN in the document", metavar="PATTERN")
-    parser.add_option("-i", "--no-case", action="store_true", dest="no_case",
-                      help="case insensitive search")
-    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
-                      help="Verbose mode. Print some info about the jobs.")
-    parser.add_option("-c", "--count", action="store_true", dest="count",
-                      help="Report the number of items found")
-    parser.add_option("-s", "--start", type="int", dest="start", metavar="NUM",
-                      help="search PATTERN from the NUM column "
-                      "(included, count starting from 0)")
-    parser.add_option("-e", "--end", type="int", dest="end", metavar="NUM",
-                      help="search PATTERN until the NUM column "
-                      "(*not* included, count starting from 0)")
-    parser.add_option('--version', dest='version', action='store_true')
+    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    parser.add_argument("-c", "--count",
+                        action="store_true", dest="count",
+                        help="Also report the number of items found")
+    parser.add_argument("-v", "--verbose",
+                        action="store_true", dest="verbose",
+                        help="Verbose mode. Print some info about the jobs")
+    parser.add_argument('--version', action='version', version=f'%(prog)s {_VERSION}')
+    parser.add_argument('pattern', metavar='PATTERN', help='search for the %(metavar)s pattern')
+    parser.add_argument('files', metavar='FILE', nargs='*', default=[sys.stdin], help='search in the given %(metavar)s, default: stdin')
+
+    filtering = parser.add_argument_group('filtering')
+    filtering.add_argument("-s", "--start",
+                           type=int, dest="start", metavar="NUM",
+                           help="search PATTERN from the NUM column "
+                           "(included, counting from 0)")
+    filtering.add_argument("-e", "--end",
+                           type=int, dest="end", metavar="NUM",
+                           help="search PATTERN until the NUM column "
+                           "(*not* included, counting from 0)")
+
+    searching = parser.add_argument_group('searching')
+    searching.add_argument("-i", "--no-case",
+                           action="store_const", const=re.IGNORECASE, default=0, dest="case",
+                           help="case insensitive search")
+    searching.add_argument("-S", "--stringify",
+                           action="store_const", const='sre', default='re', dest="stringify",
+                           help="Search in the given columns as a single string")
+    patterns = searching.add_mutually_exclusive_group()
+    patterns.add_argument("-r", "--regex",
+                          dest="regex", action='store_true',
+                          help="Search using regular expression")
     return parser
 
 
-class RowCompare:
-    _cmpfuncs = ('re', 'sre', 'sstr', 'istr')
+class Finder:
+    _cmpfuncs = ('re', 'sre')
+    _findfuncs = ('match', 'search')
     def __init__ (self, pattern, start=None, end=None):
         self.pattern = pattern
         self.start = start
         self.end = end
+        self.search = lambda p: self.re(p)
+        self.find = self.pattern.match
 
-    def set_func (self, func_name):
+    def set_findfunc (self, func_name):
+        if func_name not in self._findfuncs:
+            raise ValueError('no function named %s' % func_name)            
+        setattr(self, 'find', getattr(self.pattern, func_name))
+        
+    def set_strfunc (self, func_name):
         if func_name not in self._cmpfuncs:
             raise ValueError('no function named %s' % func_name)            
         setattr(self, 'search', getattr(self, func_name))
-
-    def search(self, *args, **kword):
-        return NotImplemented
 
     def re (self, to_match):
         return list(filter(self.pattern.match, to_match[self.start:self.end]))
 
     def sre (self, to_match):
-        return self.pattern.match(str(to_match[self.start:self.end]))
-
-    def sstr (self, to_match):
-        return self.pattern in str(to_match[self.start:self.end])
-
-    def istr (self, to_match):
-        return self.pattern in str(to_match[self.start:self.end]).lower()
+        return self.pattern.match(''.join(to_match[self.start:self.end]))
 
 
 class Handler (handler.ContentHandler):
@@ -144,7 +155,8 @@ class OOoSearch:
         
     def print_items(self, items, where):
         if self.verbose or self.count:
-            filename = os.path.basename(where)
+            try:filename = os.path.basename(where)
+            except TypeError: filename = '-'
             print("* Searching in %s:" % filename)
         if self.count:
             total = len(list(items))
@@ -155,48 +167,24 @@ class OOoSearch:
 
     def search(self, args):
         for arg in args:
-            archive = zipfile.ZipFile(arg)
+            if arg == sys.stdin:
+                archive = zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read()))
+            else:
+                archive = zipfile.ZipFile(arg)
             table = Handler()
             parse(archive.open('content.xml'), table)
-            self.print_items(filter(self.compare, table.rows), arg)
+            self.print_items(list(filter(self.compare, table.rows)), arg)
             archive.close()
+                
 
 
 if __name__ == '__main__':
     parser = check_command_line()
-    options, args = parser.parse_args()
-    if not args:
-        print("No file!")
-        sys.exit(1)
-    if options.version:
-        print(_VERSION)
-        sys.exit(0)
-    compare = None
-    if options.regex and options.pattern:
-        parser.error("options -r/--regex and -p/--pattern "
-                     "are mutually exclusive")
-    elif not any((options.regex, options.pattern)):
-        parser.error("No pattern found")
-    elif options.regex:
-        if options.no_case:
-            pattern = re.compile(options.regex, re.IGNORECASE)
-        else:
-            pattern = re.compile(options.regex)
-        compare = RowCompare(pattern, options.start, options.end)
-        if options.stringify:
-            compare.set_func('sre')
-        else:
-            compare.set_func('re')
-    else:
-        pattern = options.pattern
-        if options.no_case:
-            compare = RowCompare(pattern.lower(), options.start, options.end)
-            compare.set_func('istr')
-        else:
-            compare = RowCompare(options.pattern, options.start, options.end)
-            compare.set_func('sstr')
-
-
-    search = OOoSearch(compare.search, options.count, options.verbose)
-    search.search(args)
+    parsed = parser.parse_args()
+    pattern = parsed.pattern if parsed.regex else re.escape(parsed.pattern)
+    pattern = re.compile(pattern, parsed.case)
+    finder = Finder(pattern, parsed.start, parsed.end)
+    finder.set_strfunc(parsed.stringify)
+    finder.set_findfunc('match' if parsed.regex else 'search')
+    OOoSearch(finder.search, parsed.count, parsed.verbose).search(parsed.files)
 
