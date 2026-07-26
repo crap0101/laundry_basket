@@ -219,7 +219,7 @@ buffer's lines, go to the last line."
 	      term-input-autoexpand t
 	      x-select-enable-clipboard t)
 ; for C-q
-(setq-default fill-column 150)
+(setq-default fill-column 160)
 (setq-default sentence-end-double-space nil)
 
 ;; columns and rows
