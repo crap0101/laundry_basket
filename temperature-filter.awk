@@ -5,7 +5,7 @@
 # (barely works without the -u option).
 #
 # author: Marco Chieppa | crap0101
-# 2023
+# 2023-2026
 
 function reset() {
     name = ""
@@ -13,9 +13,11 @@ function reset() {
     in_block = 0
     use_tprint = 1
 }
+
 function tprint() {
     printf "*** %s (%s)\n", name, description
 }
+
 BEGIN {
     reset()
 }
@@ -37,7 +39,7 @@ NF && !in_block {
     name = $0
     }
 
-in_block && match($1, /^temp[0-9]+_(input|max):/, arr) {
+in_block && match($1, /^temp[0-9]+_(input|max|crit):/, arr) {
     printf "  %s: %d °C\n", arr[1], $2
 }
 
