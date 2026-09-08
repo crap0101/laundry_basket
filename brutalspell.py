@@ -273,6 +273,11 @@ True
 >>> bbb = BrutalSpell('/tmp/bb')
 >>> bbb.check('xyz')
 True
+>>> bbb.add('xxyyzz')
+>>> bbb.write()
+>>> x = BrutalSpell('/tmp/bb')
+>>> x.check('xxyyzz')
+True
 
 
 >>> from brutalspell import Trie
