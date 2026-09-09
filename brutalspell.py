@@ -154,9 +154,15 @@ class BrutalSpell:
 
 
 class Trie:
-    def __init__(self, seq: Seq = ()):
-        self.subt = {}
+    def __init__(self, seq: Seq = (), rec: bool = True):
+        """ XXX+TODO write doc
+        rec: affects __contains__, search()
+        """
+        self._size = 0 #XXX
         self.END = False
+        self._rec = bool(rec)
+        self.recursive = self._rec
+        self.subt = {}
         if seq:
             self.add(seq)
 
@@ -169,49 +175,76 @@ class Trie:
     def __setitem__ (self, element: Any, v: Trie) -> None:
         """Sets the value *v* (must be a Trie) for the *element* key."""
         self.subt[element] = v
-    def __iter__ (self) -> Iterable[Any]:
+    def __iter__ (self) -> Iterable[Any]: # XXX add iterative choice
         """Yields sequences from this Trie."""
         for k in Trie.trie_to_list(self):
             yield k
     def __len__ (self) -> int:
         """Returns the number of sequences of this Trie."""
-        return Trie.trie_len(self)
+        return self._size
+    # XXX: slower iterative method, can be deleted
+    # NOTE: the recursive one was ~ 2x faster but not
+    #       as fast as update the size dinamically.
+    # def len (self):
+    #     tries = [self]
+    #     tot = 0
+    #     while tries:
+    #         t = tries.pop()
+    #         tot += t.END
+    #         tries.extend(t[k] for k in t.keys())
+    #     return tot
 
     def add (self, seq: Seq) -> None:
         """Adds *seq* to this Trie."""
-        if not seq:
-            self.END = True
-            return
-        try:
-            k = seq[0]
-        except TypeError:
-            try:
-                k = next(seq)
-            except StopIteration:
-                self.END = True
-                return
-        try:
-            prox = self[k]
-        except KeyError:
-            prox = Trie()
-            self[k] = prox
-        try:
-            prox.add(seq[1:])
-        except TypeError:
-            prox.add(seq)
-            
+        t = self
+        for e in seq:
+            if e not in t.keys():
+                t[e] = Trie()
+            t = t[e]
+        t.END = True
+        self._size += 1
+
     def keys (self) -> Any:
         """Yields the keys of this Tries."""
         for k in self.subt:
             yield k
 
-    def search (self, seq: Any) -> bool:
+    @property
+    def recursive (self):
+        return self._rec
+    @recursive.setter
+    def recursive (self, value: bool):
+        self._rec = bool(value)
+        if not self._rec:
+            self.search = self.search_it
+        else:
+            self.search = self.search_rec
+
+    def search_it (self, seq: Any) -> bool:
+        # iterative method
+        """
+        Returns True if *seq* is in this trie.
+        This is the Iterative version, slower but more safe.
+        """
+        t = self
+        for e in seq:
+            if e not in t.keys():
+                return False
+            t = t.subt[e]
+        return t.END
+
+    def search_rec (self, seq: Any) -> bool:
+        # recursive method
         """
         Returns True if *seq* is in this trie.
         """
         return Trie.trie_search(self, seq)
+    # by default, use the (faster) recursive method.
+    # switch to the iterative method setting the *recursive* property
+    # or from the __init__
+    search = search_rec
 
-    def tolist (self) -> list[Any]:
+    def tolist (self) -> list[Any]: # XXX add iterative choice
         """
         Returns the sequences of this Trie as a list.
         """
@@ -223,17 +256,8 @@ class Trie:
             self.add(s)
 
     @staticmethod
-    def trie_len (trie: Trie) -> int:
-        """Returns the len of *trie*."""
-        tot = 0
-        if trie.END:
-            tot = 1
-        for k in trie.keys():
-            tot += Trie.trie_len(trie[k])
-        return tot
-
-    @staticmethod
     def trie_search (trie: Trie, seq: Seq) -> bool:
+        # recursive, used by search_rec
         """Returns True if *trie* contains *seq*."""
         if not seq:
             if trie.END:
@@ -254,7 +278,7 @@ class Trie:
             return False
 
     @staticmethod
-    def trie_to_list (trie: Trie, pw: Seq = ()) -> list[Any]:
+    def trie_to_list (trie: Trie, pw: Seq = ()) -> list[Any]:  # XXX add iterative choice
         """
         Returns the sequences of *trie* as a list.
         *pw* is a convenience argument since this is a recursive function,
@@ -270,42 +294,32 @@ class Trie:
 
 class WTrie (Trie):
     """A words's specialized Trie."""
-    def __init__(self, word: Str = ()):
-        super().__init__(word)
+    def __init__(self, word: Str = (), rec: bool = True):
+        super().__init__(word, rec)
 
     def __iter__ (self) -> Iterable[Str]:
         """Yields words from this Trie."""
         for k in self.trie_to_list(self):
             yield k
 
-    def add (self, word: Str) -> None:
-        """Adds *word* to this Trie."""
-        if not word:
-            self.END = True
-            return
-        k = word[0]
-        try:
-            prox = self[k]
-        except KeyError:
-            prox = WTrie()
-            self[k] = prox
-        prox.add(word[1:])
-
-    def search (self, word: Str) -> bool:
-        # not using the staticmethod since with Str we can
-        # avoid some checks.
+    def _search (self, word: Str) -> bool:
+        # (recursive). Not using the staticmethod since
+        # with Str we can avoid some checks.
+        # iterative method search() in the Trie class.
         """
         Returns True if *word* is in this trie.
         """
         return self.trie_search(self, word)
+    search = _search
 
-    def tolist (self) -> list[Str]:
+    def tolist (self) -> list[Str]:  # XXX add iterative choice
         """
         Returns the words of this Trie as a list.
         """
         return self.trie_to_list(self)
 
     def trie_search (self, trie: WTrie, word: Str) -> bool:
+        # recursive, used by _search
         # as like the search() method, we can speed up a bit
         # and avoid some checks for this specific types.
         """Returns True if *trie* contains *word*."""
@@ -319,7 +333,7 @@ class WTrie (Trie):
         except KeyError:
             return False
 
-    def trie_to_list (self, trie: WTrie, pw: Str = '') -> list[Str]:
+    def trie_to_list (self, trie: WTrie, pw: Str = '') -> list[Str]:  # XXX add iterative choice
         # specific methods to get words as expected.
         # While the Trie's staticmethod can be used with strings,
         # building a list of list to be joined later is slower than
@@ -426,4 +440,44 @@ False
 >>> t['x']
 [...]
 KeyError: 'x'
+"""
+
+
+"""
+# removed recursive version of the add method because slower than the iterative one
+# recursive version of search() is still faster
+
+crap0101@debian:~$ python /tmp/t.py
+add:    2.7539
+add_it: 2.2532
+t.search:    0.9787
+t.search_it: 2.2759
+
+
+import brutalspell
+t = brutalspell.Trie()
+t1 = brutalspell.Trie()
+t2 = brutalspell.Trie()
+
+def add(data):
+    t = brutalspell.Trie()
+    for x in data:
+        t.add(x)
+def add_it(data):
+    t = brutalspell.Trie()
+    for x in data:
+        t.add_it(x) # removed
+
+with open('/usr/share/dict/italian') as f:
+    tot = list(l.strip() for l in f)
+    data = random.choices(tot, k=1000)
+
+
+print('add:    {:.4f}'.format(timeit.Timer('add(data)', globals=locals()).timeit(1000)))
+#print('add_it: {:.4f}'.format(timeit.Timer('add_it(data)', globals=locals()).timeit(1000)))
+
+t.update(tot)
+
+print('t.search:    {:.4f}'.format(timeit.Timer('for x in data:t.search(x)', globals=locals()).timeit(1000)))
+print('t.search_it: {:.4f}'.format(timeit.Timer('for x in data:t.search_it(x)', globals=locals()).timeit(1000)))
 """
