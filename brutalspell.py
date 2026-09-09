@@ -20,7 +20,7 @@
 from __future__ import annotations # for annotation of Trie in the class itself
 from collections.abc import Iterable, Sequence
 import json
-from typing import Union
+from typing import Any, Union
 
 __doc__ = '''Brutal spell checker.'''
 
@@ -153,101 +153,187 @@ class BrutalSpell:
                 json.dump(tuple(self._data), out)
 
 
-
 class Trie:
-    def __init__(self, word: Str = ()):
+    def __init__(self, seq: Seq = ()):
         self.subt = {}
-        self.EOS = False
-        if word:
-            self.add(word)
+        self.END = False
+        if seq:
+            self.add(seq)
 
-    def __contains__ (self, word: Str) -> bool:
-        """Returns True if *words* belongs to this trie."""
-        return self.search(word)
-    def __getitem__ (self, c: Str) -> Trie:
-        """Returns the sub-trie associated at the *c* key."""
-        return self.subt[c]
-    def __setitem__ (self, c: Str, v: Trie) -> None:
-        """Sets the value *v* (must be a Trie) for the *c* key."""
-        self.subt[c] = v
-    def __iter__ (self) -> Iterable[Str]:
-        """Yields words from this Trie."""
+    def __contains__ (self, seq: Seq) -> bool:
+        """Returns True if *seq* belongs to this trie."""
+        return self.search(seq)
+    def __getitem__ (self, element: Any) -> Trie:
+        """Returns the sub-trie associated at the *element* key."""
+        return self.subt[element]
+    def __setitem__ (self, element: Any, v: Trie) -> None:
+        """Sets the value *v* (must be a Trie) for the *element* key."""
+        self.subt[element] = v
+    def __iter__ (self) -> Iterable[Any]:
+        """Yields sequences from this Trie."""
         for k in Trie.trie_to_list(self):
             yield k
     def __len__ (self) -> int:
-        """Returns the number of words of this Trie."""
+        """Returns the number of sequences of this Trie."""
         return Trie.trie_len(self)
 
-    def add (self, word: Str) -> None:
-        """Adds *word* to this Trie."""
-        if not word:
-            self.EOS = True
+    def add (self, seq: Seq) -> None:
+        """Adds *seq* to this Trie."""
+        if not seq:
+            self.END = True
             return
-        k = word[0]
+        try:
+            k = seq[0]
+        except TypeError:
+            try:
+                k = next(seq)
+            except StopIteration:
+                self.END = True
+                return
         try:
             prox = self[k]
         except KeyError:
             prox = Trie()
             self[k] = prox
-        prox.add(word[1:])
-
-    def keys (self) -> Str:
+        try:
+            prox.add(seq[1:])
+        except TypeError:
+            prox.add(seq)
+            
+    def keys (self) -> Any:
         """Yields the keys of this Tries."""
         for k in self.subt:
             yield k
 
-    def search (self, word: Str) -> bool:
+    def search (self, seq: Any) -> bool:
         """
-        Returns True if *word* is in this trie.
+        Returns True if *seq* is in this trie.
         """
-        return Trie.trie_search(self, word)
+        return Trie.trie_search(self, seq)
 
-    def tolist (self) -> list[Str]:
+    def tolist (self) -> list[Any]:
         """
-        Returns the words of this Trie as a list.
+        Returns the sequences of this Trie as a list.
         """
         return Trie.trie_to_list(self)
 
-    def update (self, seq: Seq) -> None:
-        """Adds the words in the *seq* sequence to this Trie."""
-        for w in seq:
-            self.add(w)
+    def update (self, seq: Seq[Seq, ...]) -> None:
+        """Adds the sequences in the *seq* sequence to this Trie."""
+        for s in seq:
+            self.add(s)
 
     @staticmethod
     def trie_len (trie: Trie) -> int:
         """Returns the len of *trie*."""
         tot = 0
-        if trie.EOS:
+        if trie.END:
             tot = 1
         for k in trie.keys():
             tot += Trie.trie_len(trie[k])
         return tot
 
     @staticmethod
-    def trie_search (trie: Trie, word: Str) -> bool:
-        """Returns True if *trie* contains *word*."""
-        if not word:
-            if trie.EOS:
+    def trie_search (trie: Trie, seq: Seq) -> bool:
+        """Returns True if *trie* contains *seq*."""
+        if not seq:
+            if trie.END:
                 return True
             return False
-        c = word[0]
         try:
-            return Trie.trie_search(trie[c], word[1:])        
+            c = seq[0]
+        except TypeError:
+            try:
+                c = next(seq)
+            except StopIteration:
+                return False
+        try:
+            return Trie.trie_search(trie[c], seq[1:])
+        except TypeError:
+            return Trie.trie_search(trie[c], c)
         except KeyError:
             return False
 
     @staticmethod
-    def trie_to_list (trie: Trie, pw: Str = '') -> list[Str]:
+    def trie_to_list (trie: Trie, pw: Seq = ()) -> list[Any]:
+        """
+        Returns the sequences of *trie* as a list.
+        *pw* is a convenience argument since this is a recursive function,
+        can be leaved empty.
+        """
+        s = []
+        if trie.END:
+            s.append(pw)
+        for k in trie.keys():
+            s.extend([e for e in Trie.trie_to_list(trie[k], pw + (k,))])
+        return s
+
+
+class WTrie (Trie):
+    """A words's specialized Trie."""
+    def __init__(self, word: Str = ()):
+        super().__init__(word)
+
+    def __iter__ (self) -> Iterable[Str]:
+        """Yields words from this Trie."""
+        for k in self.trie_to_list(self):
+            yield k
+
+    def add (self, word: Str) -> None:
+        """Adds *word* to this Trie."""
+        if not word:
+            self.END = True
+            return
+        k = word[0]
+        try:
+            prox = self[k]
+        except KeyError:
+            prox = WTrie()
+            self[k] = prox
+        prox.add(word[1:])
+
+    def search (self, word: Str) -> bool:
+        # not using the staticmethod since with Str we can
+        # avoid some checks.
+        """
+        Returns True if *word* is in this trie.
+        """
+        return self.trie_search(self, word)
+
+    def tolist (self) -> list[Str]:
+        """
+        Returns the words of this Trie as a list.
+        """
+        return self.trie_to_list(self)
+
+    def trie_search (self, trie: WTrie, word: Str) -> bool:
+        # as like the search() method, we can speed up a bit
+        # and avoid some checks for this specific types.
+        """Returns True if *trie* contains *word*."""
+        if not word:
+            if trie.END:
+                return True
+            return False
+        c = word[0]
+        try:
+            return self.trie_search(trie[c], word[1:])        
+        except KeyError:
+            return False
+
+    def trie_to_list (self, trie: WTrie, pw: Str = '') -> list[Str]:
+        # specific methods to get words as expected.
+        # While the Trie's staticmethod can be used with strings,
+        # building a list of list to be joined later is slower than
+        # build the strings in the first place.
         """
         Returns the words of *trie* as a list.
         *pw* is a convenience argument since this is a recursive function,
         can be leaved empty.
         """
         words = []
-        if trie.EOS:
+        if trie.END:
             words.append(pw)
         for k in trie.keys():
-            words.extend([s for s in Trie.trie_to_list(trie[k], pw + k)])
+            words.extend([s for s in self.trie_to_list(trie[k], pw + k)])
         return words
 
 
@@ -282,51 +368,62 @@ True
 
 >>> from brutalspell import Trie
 >>> t = Trie('foo')
+>>> t.add('foo')
+>>> t.add('spam')
+>>> t.add('foobar')
+>>> list(t)
+[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm')]
+>>> t.add(list(range(10)))
+>>> list(t)
+[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
+>>> 'foo' in t
+True
+>>> 'fo' in t
+False
+>>> t.add(list(range(5)))
+>>> list(t.keys())
+['f', 's', 0]
+>>> list(t)
+[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
+>>> t.search(list(range(5)))
+True
+>>> t.search(list(range(7)))
+False
+>>> t.update('eggs spam'.split())
+>>> list(t)
+[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), ('e', 'g', 'g', 's')]
+>>> tuple(t)
+(('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), ('e', 'g', 'g', 's'))
+>>> t.tolist()
+[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), ('e', 'g', 'g', 's')]
+>>> len(t)
+6
+>>> t[0]
+<brutalspell.Trie object at 0x7ff981c3cc80>
+>>> list(t[0])
+[(1, 2, 3, 4), (1, 2, 3, 4, 5, 6, 7, 8, 9)]
+>>> t['x']
+Traceback (most recent call last):
+[...]
+KeyError: 'x'
+
+
+>>> t = brutalspell.WTrie('foo')
 >>> t.add('foobar')
 >>> t.add('spam')
 >>> len(t)
 3
 >>> list(t)
 ['foo', 'foobar', 'spam']
->>> for x in t:x
-... 
-'foo'
-'foobar'
-'spam'
->>> t['f']
-<__main__.Trie object at 0x7fe03c9302d0>
->>> t['x']
-Traceback (most recent call last):
-[...]
-KeyError: 'x'
->>> list(t.keys())
-['f', 's']
->>> t.search('foo')
-True
 >>> 'foo' in t
 True
->>> 'f' in t
+>>> 'fo' in t
 False
->>> 'o' in t
-False
->>> t.update('foobar eggs lol'.split())
->>> len(t)
-5
->>> tuple(t)
-('foo', 'foobar', 'spam', 'eggs', 'lol')
->>> t.add('foo')
->>> len(t)
-5
->>> tuple(t)
-('foo', 'foobar', 'spam', 'eggs', 'lol')
->>> t.tolist()
-['foo', 'foobar', 'spam', 'eggs', 'lol']
->>> tt = Trie('uzzz')
->>> t['u'] = tt
->>> len(t)
-6
->>> t.tolist()
-['foo', 'foobar', 'spam', 'eggs', 'lol', 'uuzzz']
 >>> list(t.keys())
-['f', 's', 'e', 'l', 'u']
+['f', 's']
+>>> list(t['f'])
+['oo', 'oobar']
+>>> t['x']
+[...]
+KeyError: 'x'
 """
