@@ -54,7 +54,7 @@ def get_args (cmdline=None):
     p.add_argument('-x', '--inexact-match',
                    dest='find_inexact', nargs='?', default=None,
                    const='[_-].*', metavar='PATTERN',
-                   help='''Search for inexact matching, i.e. for a file named
+                   help=r'''Search for inexact matching, i.e. for a file named
                    123.raw without a corresponding file 123.jpg the former will
                    be not removed if a file (for example) named 123-01.jpg or
                    123_edit1.jpg exists. Anyway the raw file will be deleted if

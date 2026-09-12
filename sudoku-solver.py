@@ -110,7 +110,7 @@ if __name__ == '__main__':
              7, 8, 1, 0, 0, 0, 2, 0, 0, 0, 0, 4, 0, 0, 0, 0,
              0, 0, 3, 5, 0, 0, 0, 4, 9, 0, 8, 0, 7, 0, 0, 5, 0]
     #"""
-    """
+    r"""
     s = sys.stdin.read()
     table = list(map(lambda x: 0 if x == '.' else int(x),
                      re.findall(r'(\d+|\.)', s, re.DOTALL)))
