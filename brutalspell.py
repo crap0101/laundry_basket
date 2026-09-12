@@ -290,7 +290,16 @@ class Trie:
         for k in trie.keys():
             s.extend([e for e in Trie.trie_to_list(trie[k], pw + (k,))])
         return s
-
+    # NOTE: metodo per len, lento... ma si può adattare per la lista di parole,
+    #       visto che per questa non ci sono shortcuts come per len()
+    # def len (self):
+    #     tries = [self]
+    #     tot = 0
+    #     while tries:
+    #         t = tries.pop()
+    #         tot += t.END
+    #         tries.extend(t[k] for k in t.keys())
+    #     return tot
 
 class WTrie (Trie):
     """A words's specialized Trie."""
