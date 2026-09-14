@@ -62,14 +62,14 @@ class BrutalSpell:
         """
         self._fromfile = isinstance(data_or_file, Str)
         self._rawfile = bool(rawfile)
-        self._init_data = data_or_file if self._fromfile else None
+        self._init_data = data_or_file if self._fromfile else None # keeps filenames only
         self._use_set = bool(use_set)
-        self._data = set() if self._use_set else Trie()
+        self._data = set() if self._use_set else WTrie()
         if self._init_data:
             if self._fromfile:
                 self.load(data_or_file, self._rawfile)
-            else:
-                self.add(data_or_file)
+        elif self._init_data is not None:
+            self.add(data_or_file)
 
     def __len__ (self) -> int:
         """Returns the number of current words."""
@@ -78,20 +78,23 @@ class BrutalSpell:
     def add (self,
              word_or_seq: Str|Seq,
              writeonfile: bool = False,
-             otherfile: Str|bool = None) -> None:
+             otherfile: Str|bool = None,
+             rawfile: bool = False) -> None:
         """
         Adds *word_or_seq* to the internal set of words used for spell checking.
         If *writeonfile* is a true value, write out the updated set in the path
         indicated by the *data_or_file* argument of the __init__ UNLESS you
         provide the *otherfile* argument, which must be a filepath in which
         the write will be happen.
+        If *rawfile* is True write one word per line, otherwise save the words
+        in the json format.
         """
         if isinstance(word_or_seq, Str):
             self._data.add(word_or_seq)
         else:
             self._data.update(word_or_seq)
         if writeonfile:
-            self.write(otherfile)
+            self.write(otherfile, rawfile)
 
     def check (self, word: Str) -> bool:
         """
@@ -132,24 +135,31 @@ class BrutalSpell:
             self._rawfile = bool(rawfile)
             self._init_data = data
 
-    def write (self, otherfile: Str|bool = None) -> None:
+    def write (self,
+               otherfile: Str|bool = None,
+               rawfile: bool = False) -> None:
         """
         Tries to write out the updated set in the path indicated by the *data_or_file*
-        argument of the __init__ (or the last one possibly used in the load() method).
-        If wasn't a filepath throws an error, UNLESS you provide the *otherfile* argument,
-        which must be a path to file in which the write will be happens.
+        argument of the __init__ (or the last one possibly passed to the load() method).
+        If wasn't a filepath throws an error UNLESS you provide the *otherfile* argument,
+        which must be a path to a file in which the write will be happens.
         Throws a BrutalSpellDataError if the default value is not a filepath. 
         NOTE: if *otherfile* is not provided and the default path is a non-json file,
         the old file content will to be ERASED and REPLACED with the json representation
         of the ACTUAL object's set of data, something which you probably want to avoid.
+        If *rawfile* is a true value, writes one word per line instead.
         """
         if not otherfile:
             if not self._fromfile:
                 raise BrutalSpellDataError("data not loaded from file, can't write out!")
-            with open(self._init_data, 'w') as out:
-                json.dump(tuple(self._data), out)
+            out = self._init_data
         else:
-            with open(otherfile, 'w') as out:
+            out = otherfile
+        with open(out, 'w') as out:
+            if rawfile:
+                for word in self._data:
+                    print(word,end='\n',file=out)
+            else:
                 json.dump(tuple(self._data), out)
 
 
@@ -368,13 +378,92 @@ class WTrie (Trie):
         return list(''.join(e) for e in super()._tolist_rec())
 
 
-
+if __name__ == "__main__":
+    import argparse
+    # XXX: TODO
 
 
 """ EXAMPLES:
 
+>>> from brutalspell import Trie
+... 
+>>> t = Trie('foo')
+>>> t.add('spam')
+... 
+>>> t.add('foobar')
+>>> list(t)
+[['f', 'o', 'o'], ['f', 'o', 'o', 'b', 'a', 'r'], ['s', 'p', 'a', 'm']]
+>>> len(t)
+3
+>>> t.add('foo')
+>>> len(t)
+3
+>>> list(t)
+[['f', 'o', 'o'], ['f', 'o', 'o', 'b', 'a', 'r'], ['s', 'p', 'a', 'm']]
+>>> t.update(['eggs', 'baz'])
+>>> list(t)
+[['f', 'o', 'o'], ['f', 'o', 'o', 'b', 'a', 'r'], ['s', 'p', 'a', 'm'], ['e', 'g', 'g', 's'], ['b', 'a', 'z']]
+>>> len(t)
+5
+>>> t.add(range(10))
+>>> t.add(range(5))
+>>> list(t)
+[['f', 'o', 'o'], ['f', 'o', 'o', 'b', 'a', 'r'], ['s', 'p', 'a', 'm'], ['e', 'g', 'g', 's'], ['b', 'a', 'z'], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+>>> range(5) in t
+True
+>>> range(15) in t
+False
+>>> range(7) in t
+False
+>>> range(10) in t
+True
+>>> for x in t:x
+... 
+['f', 'o', 'o']
+['f', 'o', 'o', 'b', 'a', 'r']
+['s', 'p', 'a', 'm']
+['e', 'g', 'g', 's']
+['b', 'a', 'z']
+[0, 1, 2, 3, 4]
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+
+>>> from brutalspell import WTrie
+>>> t = WTrie('foo')
+>>> t.update(['eggs', 'baz'])
+>>> len(t)
+3
+>>> list(t)
+['foo', 'eggs', 'baz']
+>>> t.add('spam')
+>>> for x in t:x
+... 
+'foo'
+'eggs'
+'baz'
+'spam'
+>>> t['f']
+<brutalspell.Trie object at 0x7f28ba8f5950>
+>>> t['x']
+Traceback (most recent call last):
+...
+KeyError: 'x'
+>>>
+>>> list(t.keys())
+['f', 'e', 'b', 's']
+>>> t.add('foobar')
+>>> len(t)
+5
+>>> list(t)
+['foo', 'foobar', 'eggs', 'baz', 'spam']
+>>> list(t['f'])
+[['o', 'o'], ['o', 'o', 'b', 'a', 'r']]
+
+
 >>> from brutalspell import BrutalSpell
 >>> b = BrutalSpell('/usr/share/dict/words', True)
+>>> len(b)
+104334
 >>> b.check('python')
 True
 >>> b.check('check')
@@ -399,105 +488,4 @@ True
 >>> x.check('xxyyzz')
 True
 
-
->>> from brutalspell import Trie
->>> t = Trie('foo')
->>> t.add('foo')
->>> t.add('spam')
->>> t.add('foobar')
->>> list(t)
-[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm')]
->>> t.add(list(range(10)))
->>> list(t)
-[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
->>> 'foo' in t
-True
->>> 'fo' in t
-False
->>> t.add(list(range(5)))
->>> list(t.keys())
-['f', 's', 0]
->>> list(t)
-[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)]
->>> t.search(list(range(5)))
-True
->>> t.search(list(range(7)))
-False
->>> t.update('eggs spam'.split())
->>> list(t)
-[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), ('e', 'g', 'g', 's')]
->>> tuple(t)
-(('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), ('e', 'g', 'g', 's'))
->>> t.tolist()
-[('f', 'o', 'o'), ('f', 'o', 'o', 'b', 'a', 'r'), ('s', 'p', 'a', 'm'), (0, 1, 2, 3, 4), (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), ('e', 'g', 'g', 's')]
->>> len(t)
-6
->>> t[0]
-<brutalspell.Trie object at 0x7ff981c3cc80>
->>> list(t[0])
-[(1, 2, 3, 4), (1, 2, 3, 4, 5, 6, 7, 8, 9)]
->>> t['x']
-Traceback (most recent call last):
-[...]
-KeyError: 'x'
-
-
->>> t = brutalspell.WTrie('foo')
->>> t.add('foobar')
->>> t.add('spam')
->>> len(t)
-3
->>> list(t)
-['foo', 'foobar', 'spam']
->>> 'foo' in t
-True
->>> 'fo' in t
-False
->>> list(t.keys())
-['f', 's']
->>> list(t['f'])
-['oo', 'oobar']
->>> t['x']
-[...]
-KeyError: 'x'
-"""
-
-
-"""
-# removed recursive version of the add method because slower than the iterative one
-# recursive version of search() is still faster
-
-crap0101@debian:~$ python /tmp/t.py
-add:    2.7539
-add_it: 2.2532
-t.search:    0.9787
-t.search_it: 2.2759
-
-
-import brutalspell
-t = brutalspell.Trie()
-t1 = brutalspell.Trie()
-t2 = brutalspell.Trie()
-
-def add(data):
-    t = brutalspell.Trie()
-    for x in data:
-        t.add(x)
-def add_it(data):
-    t = brutalspell.Trie()
-    for x in data:
-        t.add_it(x) # removed
-
-with open('/usr/share/dict/italian') as f:
-    tot = list(l.strip() for l in f)
-    data = random.choices(tot, k=1000)
-
-
-print('add:    {:.4f}'.format(timeit.Timer('add(data)', globals=locals()).timeit(1000)))
-#print('add_it: {:.4f}'.format(timeit.Timer('add_it(data)', globals=locals()).timeit(1000)))
-
-t.update(tot)
-
-print('t.search:    {:.4f}'.format(timeit.Timer('for x in data:t.search(x)', globals=locals()).timeit(1000)))
-print('t.search_it: {:.4f}'.format(timeit.Timer('for x in data:t.search_it(x)', globals=locals()).timeit(1000)))
 """
