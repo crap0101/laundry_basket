@@ -155,12 +155,22 @@ class BrutalSpell:
 
 class Trie:
     def __init__(self, seq: Seq = (), rec: bool = True):
-        """ XXX+TODO write doc
-        rec: affects __contains__, search()
         """
-        self._size = 0 #XXX
-        self.END = False
+        Initializes the trie, with the optional sequence *seq*.
+        *rec* is a directive for using recursive methods in some operations
+        which are generally fasters but with known issues; default to True,
+        should be safe for general uses (affetcs: __contains__, __iter__,
+        iter, search, tolist).
+        """
+        # private attributes:
+        self._size = 0
         self._rec = bool(rec)
+        # methods defined after self.recursive:
+        self.iter = None
+        self.search = None
+        self.tolist = None
+        # public properties and attributes:
+        self.END = False
         self.recursive = self._rec
         self.subt = {}
         if seq:
@@ -175,24 +185,39 @@ class Trie:
     def __setitem__ (self, element: Any, v: Trie) -> None:
         """Sets the value *v* (must be a Trie) for the *element* key."""
         self.subt[element] = v
-    def __iter__ (self) -> Iterable[Any]: # XXX add iterative choice
+
+    def __iter__ (self) -> Iterable[Any]:
         """Yields sequences from this Trie."""
-        for k in Trie.trie_to_list(self):
+        return self.iter()
+    def iter (self):
+        """
+        Yields sequences from this Trie.
+        Placeholder, assigned to the proper method in the __init__.
+        """
+        raise NotImplementedError
+    def _iter_it (self):
+        # iterative
+        for k in Trie.trie_to_list_it(self):
             yield k
+    def _iter_rec (self):
+        # recursive
+        for k in Trie.trie_to_list_rec(self):
+            yield k
+
     def __len__ (self) -> int:
         """Returns the number of sequences of this Trie."""
         return self._size
-    # XXX: slower iterative method, can be deleted
-    # NOTE: the recursive one was ~ 2x faster but not
-    #       as fast as update the size dinamically.
-    # def len (self):
-    #     tries = [self]
-    #     tot = 0
-    #     while tries:
-    #         t = tries.pop()
-    #         tot += t.END
-    #         tries.extend(t[k] for k in t.keys())
-    #     return tot
+        # NOTE: slower iterative method follow.
+        #       The recursive one was ~ 2x faster but not
+        #       as fast as update the size dinamically.
+        # def len (self):
+        #     tries = [self]
+        #     tot = 0
+        #     while tries:
+        #         t = tries.pop()
+        #         tot += t.END
+        #         tries.extend(t[k] for k in t.keys())
+        #     return tot
 
     def add (self, seq: Seq) -> None:
         """Adds *seq* to this Trie."""
@@ -201,11 +226,12 @@ class Trie:
             if e not in t.keys():
                 t[e] = Trie()
             t = t[e]
-        t.END = True
-        self._size += 1
+        if not t.END:
+            t.END = True
+            self._size += 1
 
     def keys (self) -> Any:
-        """Yields the keys of this Tries."""
+        """Yields the keys of this Trie."""
         for k in self.subt:
             yield k
 
@@ -216,48 +242,49 @@ class Trie:
     def recursive (self, value: bool):
         self._rec = bool(value)
         if not self._rec:
-            self.search = self.search_it
+            self.search = self._search_it
+            self.iter = self._iter_it
+            self.tolist = self._tolist_it
         else:
-            self.search = self.search_rec
+            self.search = self._search_rec
+            self.iter = self._iter_rec
+            self.tolist = self._tolist_rec
 
-    def search_it (self, seq: Any) -> bool:
+    def search (self, seq: Any):
+        """
+        Returns True if *seq* is in this trie.
+        Placeholder, assigned to the proper method in the __init__.
+        """
+        raise NotImplementedError
+    def _search_it (self, seq: Any) -> bool:
         # iterative method
         """
         Returns True if *seq* is in this trie.
         This is the Iterative version, slower but more safe.
         """
-        t = self
-        for e in seq:
-            if e not in t.keys():
-                return False
-            t = t.subt[e]
-        return t.END
-
-    def search_rec (self, seq: Any) -> bool:
+        return Trie.trie_search_it(self)
+    def _search_rec (self, seq: Any) -> bool:
         # recursive method
         """
         Returns True if *seq* is in this trie.
         """
-        return Trie.trie_search(self, seq)
-    # by default, use the (faster) recursive method.
-    # switch to the iterative method setting the *recursive* property
-    # or from the __init__
-    search = search_rec
-
-    def tolist (self) -> list[Any]: # XXX add iterative choice
-        """
-        Returns the sequences of this Trie as a list.
-        """
-        return Trie.trie_to_list(self)
-
-    def update (self, seq: Seq[Seq, ...]) -> None:
-        """Adds the sequences in the *seq* sequence to this Trie."""
-        for s in seq:
-            self.add(s)
-
+        return Trie.trie_search_rec(self, seq)
     @staticmethod
-    def trie_search (trie: Trie, seq: Seq) -> bool:
-        # recursive, used by search_rec
+    def trie_search_it (trie: Trie, seq: Any) -> bool:
+        # iterative
+        """
+        Returns True if *seq* is in *trie*.
+        This is the Iterative version, slower but more safe.
+        """
+        t = trie
+        for e in seq:
+            if e not in t.keys():
+                return False
+            t = t[e]
+        return t.END
+    @staticmethod
+    def trie_search_rec (trie: Trie, seq: Seq) -> bool:
+        # recursive
         """Returns True if *trie* contains *seq*."""
         if not seq:
             if trie.END:
@@ -271,35 +298,59 @@ class Trie:
             except StopIteration:
                 return False
         try:
-            return Trie.trie_search(trie[c], seq[1:])
+            return Trie.trie_search_rec(trie[c], seq[1:])
         except TypeError:
-            return Trie.trie_search(trie[c], c)
+            return Trie.trie_search_rec(trie[c], c)
         except KeyError:
             return False
 
+    def tolist (self) -> list[Any]:
+        """
+        Returns the sequences of this Trie as a list.
+        Placeholder, assigned to the proper method in the __init__.
+        """
+        raise NotImplementedError
+    def _tolist_it (self) -> list[Any]:
+        return Trie.trie_to_list_it(self)
+    def _tolist_rec (self) -> list[Any]:
+        return Trie.trie_to_list_rec(self)
     @staticmethod
-    def trie_to_list (trie: Trie, pw: Seq = ()) -> list[Any]:  # XXX add iterative choice
+    def trie_to_list_it (trie: Trie) -> list[Any]:
+        # iterative
         """
         Returns the sequences of *trie* as a list.
-        *pw* is a convenience argument since this is a recursive function,
-        can be leaved empty.
         """
-        s = []
-        if trie.END:
-            s.append(pw)
-        for k in trie.keys():
-            s.extend([e for e in Trie.trie_to_list(trie[k], pw + (k,))])
-        return s
-    # NOTE: metodo per len, lento... ma si può adattare per la lista di parole,
-    #       visto che per questa non ci sono shortcuts come per len()
-    # def len (self):
-    #     tries = [self]
-    #     tot = 0
-    #     while tries:
-    #         t = tries.pop()
-    #         tot += t.END
-    #         tries.extend(t[k] for k in t.keys())
-    #     return tot
+        total = []
+        stack = [[trie, []]]
+        while stack:
+            t, lst = stack.pop()
+            for k in t.keys():
+                if t[k].END:
+                    total.append(lst + [k])
+                stack.append([t[k], lst + [k]])
+        return total
+    @staticmethod
+    def trie_to_list_rec (trie: Trie) -> list[Any]:
+        # recursive
+        """
+        Returns the sequences of *trie* as a list.
+        """
+        def ttlr (trie, pw=[]):
+            s = []
+            if trie.END:
+                s.append(pw)
+            for k in trie.keys():
+                s.extend([e for e in ttlr(trie[k], pw + [k])])
+            return s
+        return ttlr(trie)
+
+    def update (self, seq: Seq[Seq, ...]) -> None:
+        """Adds the sequences in the *seq* sequence to this Trie."""
+        for s in seq:
+            self.add(s)
+    #####
+    #XXX: add remove()
+    #####
 
 class WTrie (Trie):
     """A words's specialized Trie."""
@@ -308,56 +359,16 @@ class WTrie (Trie):
 
     def __iter__ (self) -> Iterable[Str]:
         """Yields words from this Trie."""
-        for k in self.trie_to_list(self):
-            yield k
+        for k in self.iter():
+            yield ''.join(k)
 
-    def _search (self, word: Str) -> bool:
-        # (recursive). Not using the staticmethod since
-        # with Str we can avoid some checks.
-        # iterative method search() in the Trie class.
-        """
-        Returns True if *word* is in this trie.
-        """
-        return self.trie_search(self, word)
-    search = _search
+    def _tolist_it (self):
+        return list(''.join(e) for e in super()._tolist_it())
+    def _tolist_rec (self):
+        return list(''.join(e) for e in super()._tolist_rec())
 
-    def tolist (self) -> list[Str]:  # XXX add iterative choice
-        """
-        Returns the words of this Trie as a list.
-        """
-        return self.trie_to_list(self)
 
-    def trie_search (self, trie: WTrie, word: Str) -> bool:
-        # recursive, used by _search
-        # as like the search() method, we can speed up a bit
-        # and avoid some checks for this specific types.
-        """Returns True if *trie* contains *word*."""
-        if not word:
-            if trie.END:
-                return True
-            return False
-        c = word[0]
-        try:
-            return self.trie_search(trie[c], word[1:])        
-        except KeyError:
-            return False
 
-    def trie_to_list (self, trie: WTrie, pw: Str = '') -> list[Str]:  # XXX add iterative choice
-        # specific methods to get words as expected.
-        # While the Trie's staticmethod can be used with strings,
-        # building a list of list to be joined later is slower than
-        # build the strings in the first place.
-        """
-        Returns the words of *trie* as a list.
-        *pw* is a convenience argument since this is a recursive function,
-        can be leaved empty.
-        """
-        words = []
-        if trie.END:
-            words.append(pw)
-        for k in trie.keys():
-            words.extend([s for s in self.trie_to_list(trie[k], pw + k)])
-        return words
 
 
 """ EXAMPLES:
