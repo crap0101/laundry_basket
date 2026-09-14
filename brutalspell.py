@@ -380,7 +380,52 @@ class WTrie (Trie):
 
 if __name__ == "__main__":
     import argparse
-    # XXX: TODO
+    import sys
+    
+    def make_func (args):
+        bc = BrutalSpell(args.input_file, args.raw_input)
+        bc.write(args.output_file, args.raw_output)
+
+    def check_func (args):
+        is_found = ('not found', 'found')
+        bc = BrutalSpell(args.input_file, args.raw_input)
+        result = list((w, bc.check(w)) for w in args.words)
+        found = list(wr for wr in result if wr[1])
+        if args.matching:
+            for w, _ in found:
+                print(w)
+        else:
+            for w, r in result:
+                print('{}: {}'.format(w, is_found[r]))
+        return len(found) != len(args.words)
+
+    _epilog = """
+EXIT STATUS:
+    check: 0 if all checked words are found, 1 otherwise.
+    make: 0 if not errors occours.
+    """
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog=_epilog)
+    subparsers = parser.add_subparsers(help='Subcommands')
+    # make
+    make = subparsers.add_parser('make',
+                                 help='''makes a dict file for subsequent usage.
+                                 Default file format is json. See `%(prog)s %(dest)s -h` for more info.''')
+    make.add_argument('-R', '--raw', dest='raw_output', action='store_true', help='writes output file in raw format (one word per line)')
+    make.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
+    make.add_argument('input_file', metavar='SOURCE_FILE', help='reads words from %(metavar)s')
+    make.add_argument('output_file', metavar='OUTPUT_FILE', help='writes words to %(metavar)s')
+    make.set_defaults(main_func=make_func)
+    # check
+    check = subparsers.add_parser('check', help='checks for words. See `%(prog)s %(dest)s -h` for more info.')
+    check.add_argument('-m', '--only-matching', dest='matching', action='store_true', help='prints matching words only')
+    check.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
+    check.add_argument('input_file', metavar='FILE', help='loads words from %(metavar)s')
+    check.add_argument('words', nargs='+', help='words to check')
+    check.set_defaults(main_func=check_func)
+    
+    args = parser.parse_args()
+    sys.exit(args.main_func(args))
 
 
 """ EXAMPLES:
@@ -487,5 +532,35 @@ True
 >>> x = BrutalSpell('/tmp/bb')
 >>> x.check('xxyyzz')
 True
+
+
+
+crap0101@debian:~$ brutalspell.py check -r /usr/share/dict/italian casa mare montagnie 
+casa: found
+mare: found
+montagnie: not found
+crap0101@debian:~$ brutalspell.py check -rm /usr/share/dict/italian casa mare montagnie 
+casa
+mare
+crap0101@debian:~$ brutalspell.py make -Rr /usr/share/dict/italian /tmp/ita # like cp :-D
+crap0101@debian:~$ diff <(sort /usr/share/dict/italian) <(sort /tmp/ita);echo $?
+0
+crap0101@debian:~$ brutalspell.py make -r /usr/share/dict/italian /tmp/ita.json
+crap0101@debian:~$ brutalspell.py check /tmp/ita.json casa mare montagnie 
+casa: found
+mare: found
+montagnie: not found
+crap0101@debian:~$ # or, as a module:
+crap0101@debian:~$ python -m brutalspell check /tmp/ita.json casa mare montagnie 
+casa: found
+mare: found
+montagnie: not found
+crap0101@debian:~$ brutalspell.py make -R /tmp/ita.json /tmp/ita.txt # reverting
+crap0101@debian:~$ diff <(sort /usr/share/dict/italian) <(sort /tmp/ita.txt);echo $?
+0
+crap0101@debian:~$ brutalspell.py check -r /tmp/ita.txt casa mare montagnie 
+casa: found
+mare: found
+montagnie: not found
 
 """
