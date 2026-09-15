@@ -381,7 +381,15 @@ class WTrie (Trie):
 if __name__ == "__main__":
     import argparse
     import sys
-    
+
+    def test_func (args):
+        import timeit
+        def test_load ():
+            for _ in range(args.number):
+                bc = BrutalSpell(args.input_file, args.raw_input)
+                del bc
+        print("test_load: {:.4f}".format(timeit.Timer('test_load()', globals=locals()).timeit(1) / args.number))
+        
     def make_func (args):
         bc = BrutalSpell(args.input_file, args.raw_input)
         bc.write(args.output_file, args.raw_output)
@@ -406,7 +414,7 @@ EXIT STATUS:
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=_epilog)
-    subparsers = parser.add_subparsers(help='Subcommands')
+    subparsers = parser.add_subparsers(required=True, help='Subcommands')
     # make
     make = subparsers.add_parser('make',
                                  help='''makes a dict file for subsequent usage.
@@ -423,7 +431,13 @@ EXIT STATUS:
     check.add_argument('input_file', metavar='FILE', help='loads words from %(metavar)s')
     check.add_argument('words', nargs='+', help='words to check')
     check.set_defaults(main_func=check_func)
-    
+    # test
+    test = subparsers.add_parser('test', help='run tests.')
+    test.add_argument('input_file', metavar='SOURCE_FILE', help='reads words from %(metavar)s')
+    test.add_argument('-n', '--number', dest='number', type=int, default=1000, metavar='N', help='runs test %(metavar)s times (default: %(default)s)')
+    test.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
+    test.set_defaults(main_func=test_func)
+
     args = parser.parse_args()
     sys.exit(args.main_func(args))
 
