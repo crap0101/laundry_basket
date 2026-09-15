@@ -382,6 +382,17 @@ if __name__ == "__main__":
     import argparse
     import sys
 
+    def example_func (args): # nothing but LOL
+        import ast
+        with open(__file__) as f:
+            c = ast.parse(f.read())
+        for node in ast.walk(c):
+            if isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if t.id == '_examples':
+                        print(node.value.value)
+                        return
+
     def test_func (args):
         import timeit
         def test_load ():
@@ -410,7 +421,8 @@ if __name__ == "__main__":
     _epilog = """
 EXIT STATUS:
     check: 0 if all checked words are found, 1 otherwise.
-    make: 0 if not errors occours.
+    make: as above.
+    test: as above.
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=_epilog)
@@ -437,12 +449,15 @@ EXIT STATUS:
     test.add_argument('-n', '--number', dest='number', type=int, default=1000, metavar='N', help='runs test %(metavar)s times (default: %(default)s)')
     test.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
     test.set_defaults(main_func=test_func)
+    # examples
+    example = subparsers.add_parser('example', help='show some usage examples.')
+    example.set_defaults(main_func=example_func)
 
     args = parser.parse_args()
     sys.exit(args.main_func(args))
 
 
-""" EXAMPLES:
+    _examples = """EXAMPLES:
 
 >>> from brutalspell import Trie
 ... 
