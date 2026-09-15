@@ -75,11 +75,7 @@ class BrutalSpell:
         """Returns the number of current words."""
         return len(self._data)
 
-    def add (self,
-             word_or_seq: Str|Seq,
-             writeonfile: bool = False,
-             otherfile: Str|bool = None,
-             rawfile: bool = False) -> None:
+    def add (self, word_or_seq: Str|Seq) -> None:
         """
         Adds *word_or_seq* to the internal set of words used for spell checking.
         If *writeonfile* is a true value, write out the updated set in the path
@@ -93,8 +89,6 @@ class BrutalSpell:
             self._data.add(word_or_seq)
         else:
             self._data.update(word_or_seq)
-        if writeonfile:
-            self.write(otherfile, rawfile)
 
     def check (self, word: Str) -> bool:
         """
@@ -140,27 +134,30 @@ class BrutalSpell:
                rawfile: bool = False) -> None:
         """
         Tries to write out the updated set in the path indicated by the *data_or_file*
-        argument of the __init__ (or the last one possibly passed to the load() method).
-        If wasn't a filepath throws an error UNLESS you provide the *otherfile* argument,
-        which must be a path to a file in which the write will be happens.
-        Throws a BrutalSpellDataError if the default value is not a filepath. 
-        NOTE: if *otherfile* is not provided and the default path is a non-json file,
-        the old file content will to be ERASED and REPLACED with the json representation
-        of the ACTUAL object's set of data, something which you probably want to avoid.
-        If *rawfile* is a true value, writes one word per line instead.
+        argument of the __init__ (or the last one possibly passed to the load() method)
+        in the actual raw or json format.
+        If *data_or_file* isn't a filepath throws a BrutalSpellDataError UNLESS
+        you provide the *otherfile* argument, which must be a path to a file in which
+        the write will be happen, (in the json format by default, or one word per line if
+        *rawfile* is a true value).
         """
         if not otherfile:
             if not self._fromfile:
                 raise BrutalSpellDataError("data not loaded from file, can't write out!")
             out = self._init_data
+            raw = self._rawfile
         else:
             out = otherfile
+            raw = rawfile
         with open(out, 'w') as out:
-            if rawfile:
+            if raw:
                 for word in self._data:
                     print(word,end='\n',file=out)
             else:
                 json.dump(tuple(self._data), out)
+
+    def write_as (): #XXX+TODO: raw, json, ...
+        pass
 
 
 class Trie:
@@ -382,28 +379,17 @@ if __name__ == "__main__":
     import argparse
     import sys
 
-    def example_func (args): # nothing but LOL
-        import ast
-        with open(__file__) as f:
-            c = ast.parse(f.read())
-        for node in ast.walk(c):
-            if isinstance(node, ast.Assign):
-                for t in node.targets:
-                    if t.id == '_examples':
-                        print(node.value.value)
-                        return
-
-    def test_func (args):
-        import timeit
-        def test_load ():
-            for _ in range(args.number):
-                bc = BrutalSpell(args.input_file, args.raw_input)
-                del bc
-        print("test_load: {:.4f}".format(timeit.Timer('test_load()', globals=locals()).timeit(1) / args.number))
-        
-    def make_func (args):
-        bc = BrutalSpell(args.input_file, args.raw_input)
-        bc.write(args.output_file, args.raw_output)
+    def add_func (args):
+        if not (args.source_file or args.words):
+            print("Nothing to add...")
+            return 1
+        bc = BrutalSpell(args.dest_file, args.raw_output)
+        if args.source_file:
+            bc.load(args.source_file, args.raw_input)
+        if args.words:
+            for w in args.words:
+                bc.add(w)
+        bc.write()
 
     def check_func (args):
         is_found = ('not found', 'found')
@@ -418,16 +404,51 @@ if __name__ == "__main__":
                 print('{}: {}'.format(w, is_found[r]))
         return len(found) != len(args.words)
 
+    def example_func (args): # nothing but LOL
+        import ast
+        with open(__file__) as f:
+            c = ast.parse(f.read())
+        for node in ast.walk(c):
+            if isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if t.id == '_examples':
+                        print(node.value.value)
+                        return
+        
+    def make_func (args):
+        bc = BrutalSpell(args.input_file, args.raw_input)
+        bc.write(args.output_file, args.raw_output)
+
+    def test_func (args):
+        import timeit
+        def test_load ():
+            for _ in range(args.number):
+                bc = BrutalSpell(args.input_file, args.raw_input)
+                del bc
+        print("test_load: {:.4f}".format(timeit.Timer('test_load()', globals=locals()).timeit(1) / args.number))
+
     _epilog = """
 EXIT STATUS:
-    check: 0 if all checked words are found, 1 otherwise.
-    make: as above.
-    test: as above.
-    example: as above.
+    0 if no errors, 1 otherwise.
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=_epilog)
     subparsers = parser.add_subparsers(required=True, help='Subcommands')
+    # add
+    add = subparsers.add_parser('add', help='add words. See `%(prog)s %(dest)s -h` for more info.')
+    add.add_argument('-i', '--input-file', dest='source_file', metavar='FILE', help='words to add taken from %(metavar)s')
+    add.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
+    add.add_argument('-R', '--raw', dest='raw_output', action='store_true', help='output file is in raw format (one word per line)')
+    add.add_argument(dest='dest_file', metavar='DEST', help='add words to file %(metavar)s')
+    add.add_argument('words', nargs='*', help='optional words to add')
+    add.set_defaults(main_func=add_func)
+    # check
+    check = subparsers.add_parser('check', help='checks for words. See `%(prog)s %(dest)s -h` for more info.')
+    check.add_argument('-m', '--only-matching', dest='matching', action='store_true', help='prints matching words only')
+    check.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
+    check.add_argument('input_file', metavar='FILE', help='loads words from %(metavar)s')
+    check.add_argument('words', nargs='+', help='words to check')
+    check.set_defaults(main_func=check_func)
     # make
     make = subparsers.add_parser('make',
                                  help='''makes a dict file for subsequent usage.
@@ -437,13 +458,7 @@ EXIT STATUS:
     make.add_argument('input_file', metavar='SOURCE_FILE', help='reads words from %(metavar)s')
     make.add_argument('output_file', metavar='OUTPUT_FILE', help='writes words to %(metavar)s')
     make.set_defaults(main_func=make_func)
-    # check
-    check = subparsers.add_parser('check', help='checks for words. See `%(prog)s %(dest)s -h` for more info.')
-    check.add_argument('-m', '--only-matching', dest='matching', action='store_true', help='prints matching words only')
-    check.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
-    check.add_argument('input_file', metavar='FILE', help='loads words from %(metavar)s')
-    check.add_argument('words', nargs='+', help='words to check')
-    check.set_defaults(main_func=check_func)
+    #
     # test
     test = subparsers.add_parser('test', help='run tests.')
     test.add_argument('input_file', metavar='SOURCE_FILE', help='reads words from %(metavar)s')
