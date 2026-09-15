@@ -423,6 +423,7 @@ EXIT STATUS:
     check: 0 if all checked words are found, 1 otherwise.
     make: as above.
     test: as above.
+    example: as above.
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=_epilog)
