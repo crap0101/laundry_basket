@@ -400,8 +400,13 @@ if __name__ == "__main__":
             for w, _ in found:
                 print(w)
         else:
-            for w, r in result:
-                print('{}: {}'.format(w, is_found[r]))
+            if args.raw_output:
+                for w, r in result:
+                    if not r:
+                        print(w)
+            else:
+                for w, r in result:
+                    print('{}: {}'.format(w, is_found[r]))
         return len(found) != len(args.words)
 
     def example_func (args): # nothing but LOL
@@ -444,7 +449,9 @@ EXIT STATUS:
     add.set_defaults(main_func=add_func)
     # check
     check = subparsers.add_parser('check', help='checks for words. See `%(prog)s %(dest)s -h` for more info.')
-    check.add_argument('-m', '--only-matching', dest='matching', action='store_true', help='prints matching words only')
+    check_ex = check.add_mutually_exclusive_group()
+    check_ex.add_argument('-m', '--only-matching', dest='matching', action='store_true', help='prints matching words only')
+    check_ex.add_argument('-R', '--raw', dest='raw_output', action='store_true', help='prints only unknown words in raw format (one word per line)')
     check.add_argument('-r', '--raw-input', dest='raw_input', action='store_true', help='input file is in raw format (one word per line)')
     check.add_argument('input_file', metavar='FILE', help='loads words from %(metavar)s')
     check.add_argument('words', nargs='+', help='words to check')
