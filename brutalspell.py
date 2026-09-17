@@ -186,6 +186,9 @@ class Trie:
     def __contains__ (self, seq: Seq) -> bool:
         """Returns True if *seq* belongs to this trie."""
         return self.search(seq)
+    def __delitem__ (self, element: Any) -> None:
+        """Delete the sub-trie associated at the *element* key."""
+        del self.subt[element]
     def __getitem__ (self, element: Any) -> Trie:
         """Returns the sub-trie associated at the *element* key."""
         return self.subt[element]
@@ -257,6 +260,36 @@ class Trie:
             self.iter = self._iter_rec
             self.tolist = self._tolist_rec
 
+    def remove (self, seq: Any):
+        if Trie.trie_remove(self, seq):
+            self._size -= 1
+            return True
+        return False
+    @staticmethod
+    def trie_remove (trie: Trie, seq: Any):
+        t = trie
+        prev = []
+        for e in seq:
+            try:
+                actual = t[e]
+            except KeyError:
+                return False
+            if len(list(actual.keys())) == 1:
+                prev.append((t, e))
+            t = actual
+        if t.END:
+            if len(list(t.keys())):
+                t.END = False
+            else:
+                for pt, pe in reversed(prev):
+                    if not pt.END:
+                        del pt[pe]
+                    else:
+                        break
+            return True
+        else:
+            return False
+
     def search (self, seq: Any):
         """
         Returns True if *seq* is in this trie.
@@ -269,7 +302,7 @@ class Trie:
         Returns True if *seq* is in this trie.
         This is the Iterative version, slower but more safe.
         """
-        return Trie.trie_search_it(self)
+        return Trie.trie_search_it(self, seq)
     def _search_rec (self, seq: Any) -> bool:
         # recursive method
         """
@@ -355,9 +388,7 @@ class Trie:
         """Adds the sequences in the *seq* sequence to this Trie."""
         for s in seq:
             self.add(s)
-    #####
-    #XXX: add remove()
-    #####
+
 
 class WTrie (Trie):
     """A words's specialized Trie."""
@@ -584,6 +615,41 @@ True
 >>> x = BrutalSpell('/tmp/bb')
 >>> x.check('xxyyzz')
 True
+
+
+>>> from brutalspell import WTrie
+>>> t = WTrie();t.add('spam');t.add('foo');t.add('fxoobar');t.add('fab')
+>>> for i in range(2,5): t.add('u'*i)
+... 
+>>> print(len(t),list(t))
+7 ['spam', 'foo', 'fxoobar', 'fab', 'uu', 'uuu', 'uuuu']
+>>> t.remove('f')
+False
+>>> t.add('foo')
+>>> print(len(t),list(t))
+7 ['spam', 'foo', 'fxoobar', 'fab', 'uu', 'uuu', 'uuuu']
+>>> t.add('foobar')
+>>> print(len(t),list(t))
+8 ['spam', 'foo', 'foobar', 'fxoobar', 'fab', 'uu', 'uuu', 'uuuu']
+>>> t.remove('fo')
+False
+>>> print(len(t),list(t))
+8 ['spam', 'foo', 'foobar', 'fxoobar', 'fab', 'uu', 'uuu', 'uuuu']
+>>> t.add('uuuuuuuuuuuu')
+>>> print(len(t),list(t))
+9 ['spam', 'foo', 'foobar', 'fxoobar', 'fab', 'uu', 'uuu', 'uuuu', 'uuuuuuuuuuuu']
+>>> t.remove('uu')
+True
+>>> print(len(t),list(t))
+8 ['spam', 'foo', 'foobar', 'fxoobar', 'fab', 'uuu', 'uuuu', 'uuuuuuuuuuuu']
+>>> t.remove('uuuuuuuuuuuu')
+True
+>>> print(len(t),list(t))
+7 ['spam', 'foo', 'foobar', 'fxoobar', 'fab', 'uuu', 'uuuu']
+>>> t.remove('uuu')
+True
+>>> print(len(t),list(t))
+6 ['spam', 'foo', 'foobar', 'fxoobar', 'fab', 'uuuu']
 
 
 
