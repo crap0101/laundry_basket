@@ -233,6 +233,7 @@ class Trie:
         """
         Adds *seq* to this Trie.
         Returns True if the insertion is successful.
+        NOTE: empty sequences will not be added.
         """
         t = self
         n = 0
@@ -280,12 +281,22 @@ class Trie:
             self.tolist = self._tolist_rec
 
     def remove (self, seq: Any) -> bool:
+        """
+        Removes *seq* from this Trie.
+        Returns True for succerfull removal.
+        NOTE: empty sequences are ignored.
+        """
         if Trie.trie_remove(self, seq):
             self._size -= 1
             return True
         return False
     @staticmethod
     def trie_remove (trie: Trie, seq: Any) -> bool:
+        """
+        Removes *seq* from *trie*.
+        Returns True for succerfull removal.
+        NOTE: empty sequences are ignored.
+        """
         t = trie
         prev = []
         for e in seq:
