@@ -229,16 +229,35 @@ class Trie:
         #         tries.extend(t[k] for k in t.keys())
         #     return tot
 
-    def add (self, seq: Seq) -> None:
-        """Adds *seq* to this Trie."""
+    def add (self, seq: Seq) -> bool:
+        """
+        Adds *seq* to this Trie.
+        Returns True if the insertion is successful.
+        """
         t = self
+        n = 0
         for e in seq:
-            if e not in t.keys():
+            try:
+                t = t[e]
+            except KeyError:
                 t[e] = Trie()
-            t = t[e]
+                t = t[e]
+            n += 1
+        if not n: # not adding empty seq
+            return False
         if not t.END:
             t.END = True
             self._size += 1
+            return True
+        return False
+
+    def has_keys (self) -> bool:
+        """Returns True if this Trie has keys."""
+        try:
+            next(self.keys())
+            return True
+        except StopIteration:
+            return False
 
     def keys (self) -> Any:
         """Yields the keys of this Trie."""
@@ -260,31 +279,28 @@ class Trie:
             self.iter = self._iter_rec
             self.tolist = self._tolist_rec
 
-    def remove (self, seq: Any):
+    def remove (self, seq: Any) -> bool:
         if Trie.trie_remove(self, seq):
             self._size -= 1
             return True
         return False
     @staticmethod
-    def trie_remove (trie: Trie, seq: Any):
+    def trie_remove (trie: Trie, seq: Any) -> bool:
         t = trie
         prev = []
         for e in seq:
-            try:
-                actual = t[e]
-            except KeyError:
+            if e not in t.keys():
                 return False
-            if len(list(actual.keys())) == 1:
-                prev.append((t, e))
-            t = actual
+            prev.append((t, e))
+            t = t[e]
+        if not prev: # case for empty seq
+            return False
         if t.END:
-            if len(list(t.keys())):
-                t.END = False
-            else:
-                for pt, pe in reversed(prev):
-                    if not pt.END:
-                        del pt[pe]
-                    else:
+            t.END = False
+            if not t.has_keys(): #if not list(t.keys()):
+                for t, e in reversed(prev):
+                    del t[e]
+                    if t.END or t.has_keys(): #list(t.keys()):
                         break
             return True
         else:
@@ -455,9 +471,9 @@ if __name__ == "__main__":
         bc = BrutalSpell(args.input_file, args.raw_input)
         bc.write(args.output_file, args.raw_output)
 
-    def test_func (args):
+    def test_func (args): #XXX+TODO: more test
         import timeit
-        def test_load ():
+        def test_load (): #XXX: rename: load and load time...
             for _ in range(args.number):
                 bc = BrutalSpell(args.input_file, args.raw_input)
                 del bc
