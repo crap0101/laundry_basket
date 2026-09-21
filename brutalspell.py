@@ -20,6 +20,7 @@
 from __future__ import annotations # for annotation of Trie in the class itself
 from collections.abc import Iterable, Sequence
 import json
+import traceback
 from typing import Any, Union
 
 __doc__ = '''Brutal spell checker.'''
@@ -45,12 +46,22 @@ class BrutalSpellDecodeError(BrutalSpellError):
     """json problems."""
     pass
 
+class TrieError(Exception):
+    """Base error class for Trie errors."""
+    def __init__ (self, msg):
+        self.msg = msg
+        super().__init__(msg)
+    def __str__ (self):
+        return self.msg
+
+
 class BrutalSpell:
     """A brutal spell checker object."""
     def __init__ (self,
                   data_or_file: Seq|Str = None,
                   rawfile: bool = False,
-                  use_set: bool = False):
+                  use_set: bool = False,
+                  recursive: Bool = True):
         """
         Loads the brutal spell checker.
         *data_or_file* are optional data (a word, a sequence of words, default None)
@@ -58,13 +69,18 @@ class BrutalSpell:
         If *data_or_file* is a single Str, considers it as a path to some
         json-formatted file to load UNLESS *rawfile* is a true value, in which case
         it is considered as a file with a list of words (one per line).
-        If *use_set* is True, uses a set() for internal storage instead of a Trie.
+        If *use_set* is a true value, uses a set() for internal storage instead of a WTrie.
+        *recursive* is a directive for the internal WTrie (does nothing when
+        *use_set* is a true value).
         """
         self._fromfile = isinstance(data_or_file, Str)
         self._rawfile = bool(rawfile)
         self._init_data = data_or_file if self._fromfile else None # keeps filenames only
         self._use_set = bool(use_set)
+        self._recursive = bool(recursive)
         self._data = set() if self._use_set else WTrie()
+        if self._recursive and not self._use_set:
+            self._data.recursive = self._recursive
         if self._init_data:
             if self._fromfile:
                 self.load(data_or_file, self._rawfile)
@@ -84,6 +100,7 @@ class BrutalSpell:
         the write will be happen.
         If *rawfile* is True write one word per line, otherwise save the words
         in the json format.
+        Note: can raise a TrieError (when using a WTrie for internal storage).
         """
         if isinstance(word_or_seq, Str):
             self._data.add(word_or_seq)
@@ -100,6 +117,8 @@ class BrutalSpell:
         """
         Returns a copy of the internal data set, as a tuple.
         """
+        if self.recursive and not self._use_set:
+            return tuple(self._data.tolist())
         return tuple(self._data)
 
     def load (self,
@@ -128,6 +147,23 @@ class BrutalSpell:
             self._fromfile = True
             self._rawfile = bool(rawfile)
             self._init_data = data
+
+    @property
+    def recursive (self):
+        """
+        *recursive* property of the underlying data object
+        (if it's a WTrie, ignored if it's a set).
+        """
+        return self._recursive
+    @recursive.setter
+    def recursive (self, value: bool):
+        """
+        Sets the *recursive* property of the underlying data object
+        (if it's a WTrie, ignored if it's a set).
+        """
+        if not self._use_set:
+            self._recursive = bool(value)
+            self._data.recursive = self._recursive
 
     def write (self,
                otherfile: Str|bool = None,
@@ -237,13 +273,24 @@ class Trie:
         """
         t = self
         n = 0
-        for e in seq:
-            try:
-                t = t[e]
-            except KeyError:
-                t[e] = Trie()
-                t = t[e]
-            n += 1
+        new_seq_head = None
+        new_seq_key = None
+        try:
+            for e in seq:
+                try:
+                    t = t[e]
+                except KeyError:
+                    if new_seq_head is None:
+                        new_seq_head = t
+                        new_seq_key = e
+                    t[e] = Trie()
+                    t = t[e]
+                n += 1
+        except Exception as ex: # in case of error, remove partial insered seq
+            if new_seq_head is not None:
+                del new_seq_head[new_seq_key]
+            ex_fmt = ''.join(traceback.format_exception(ex))
+            raise TrieError(f'{self.__class__.__name__}@add (last seen element: {e}): {ex}\n  {ex_fmt}') from None
         if not n: # not adding empty seq
             return False
         if not t.END:
