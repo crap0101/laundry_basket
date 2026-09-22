@@ -1,12 +1,13 @@
+#!/usr/bin/env python3
 
 # author: Marco Chieppa | crap0101
-# Year: 2022
+# Year: 2022-2026
 # Description: deep-flatten a sequence *without* using recursion
 # and *avoiding* yield's stack overflows.
 # Comparison of times and (un)successful results of other
 # implementations (references in code).
 
-# Copyright (c) 2022-2025  Marco Chieppa | crap0101
+# Copyright (c) 2022-2026  Marco Chieppa | crap0101
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -32,12 +33,11 @@
 import argparse
 import builtins
 from collections import deque
+from collections.abc import Collection, Sequence, Iterable, Mapping
 import importlib
 import itertools
 import timeit
 from types import ModuleType
-from typing import Collection, Sequence, Iterable, Mapping
-from typing import Type, Union
 
 
 #######################
@@ -72,7 +72,7 @@ def _import_module (mod_name: str) -> ModuleType:
         m = None
     return m
 
-def _import_types (type_names: Sequence[str], module_names: Sequence[str]) -> Sequence[Type]:
+def _import_types (type_names: Sequence[str], module_names: Sequence[str]) -> Sequence[type]:
     """Returns a sequence of types provided in $type_names from the
     modules in $module_names (in case of types defined in more than one
     module, pick the first encountered)."""
@@ -106,7 +106,7 @@ def _import_types (type_names: Sequence[str], module_names: Sequence[str]) -> Se
             raise AttributeError('BUG! Should not be here!!!')
     return ret
 
-def _set_defval (namespace: Union[argparse.Namespace,Mapping]) -> None:
+def _set_defval (namespace: argparse.Namespace|Mapping) -> None:
     """Sets global values from $namespace."""
     if isinstance(namespace, argparse.Namespace):
         try:
@@ -141,12 +141,14 @@ HAVE_MORE = bool(_import_module('more_itertools'))
 ###########################
 
 def dflatten (seq: Sequence,
-              ignore: Sequence[Type] =IGNORED_TYPES,
-              as_iter: bool =False) -> Union[Iterable,Sequence]:
-    """Deep-flat $seq (using deque).
+              ignore: Sequence[type] = IGNORED_TYPES,
+              as_iter: bool = True) -> Iterable|Sequence:
+    """
+    Deep-flat $seq (using deque).
     $ignore must be a type or a tuple of types to ignore while flattering.
-    If $as_iter is True, return an iterable instead of a list."""
-    def inner_flat (seq, ignore):
+    If $as_iter is True (the default), return an iterable, otherwise returns a list.
+    """
+    def inner_dflatten_it (seq, ignore):
         d = deque(seq)
         while d:
             s = d.popleft()
@@ -165,35 +167,89 @@ def dflatten (seq: Sequence,
                         d.insert(idx, item)
             else:
                 yield s
-    gen = inner_flat(seq, ignore)
-    return gen if as_iter else list(gen)
+    def inner_dflatten_lst (seq, ignore):
+        d = deque(seq)
+        result = []
+        while d:
+            s = d.popleft()
+            if isinstance(s, NESTED_TYPES):
+                skip_ignored = isinstance(s, ignore)
+                if isinstance(s, REC_TYPES):
+                    if skip_ignored:
+                        result.append(s)
+                    else:
+                        for i in s:
+                            result.append(i)
+                elif skip_ignored:
+                    result.append(s)
+                else:
+                    for idx, item in enumerate(s):
+                        d.insert(idx, item)
+            else:
+                result.append(s)
+        return result
+    f = inner_dflatten_it if as_iter else inner_dflatten_lst
+    return f(seq, ignore)
 
 
-def flatten (seq: Sequence, ignore: Sequence[Type] =IGNORED_TYPES) -> Iterable:
-    """Deep-flat $seq (using list) yielding each item.
-    $ignore must be a type or a tuple of types to ignore while flattering."""
-    d = list(seq)
-    while d:
-        s = d.pop(0)
-        if isinstance(s, NESTED_TYPES):
-            skip_ignored = isinstance(s, ignore)
-            if isinstance(s, REC_TYPES):
-                if skip_ignored:
+def flatten (seq: Sequence,
+             ignore: Sequence[type] = IGNORED_TYPES,
+             as_iter: bool = True) -> Iterable|Sequence:
+    """
+    Deep-flat $seq (using list) yielding each item.
+    $ignore must be a type or a tuple of types to ignore while flattering.
+    if $as_iter is not a true value, returns a list.
+    """
+    def inner_flatten_it (seq, ignore):
+        d = list(seq)
+        while d:
+            s = d.pop(0)
+            if isinstance(s, NESTED_TYPES):
+                skip_ignored = isinstance(s, ignore)
+                if isinstance(s, REC_TYPES):
+                    if skip_ignored:
+                        yield s
+                    else:
+                        for i in s:
+                            yield i
+                elif skip_ignored:
                     yield s
                 else:
-                    for i in s:
-                        yield i
-            elif skip_ignored:
-                yield s
+                    for idx, item in enumerate(s):
+                        d.insert(idx, item)
             else:
-                for idx, item in enumerate(s):
-                    d.insert(idx, item)
-        else:
-            yield s
+                yield s
+    def inner_flatten_lst (seq, ignore):
+        d = list(seq)
+        result = []
+        while d:
+            s = d.pop(0)
+            if isinstance(s, NESTED_TYPES):
+                skip_ignored = isinstance(s, ignore)
+                if isinstance(s, REC_TYPES):
+                    if skip_ignored:
+                        result.append(s)
+                    else:
+                        for i in s:
+                            result.append(i)
+                elif skip_ignored:
+                    result.append(s)
+                else:
+                    for idx, item in enumerate(s):
+                        d.insert(idx, item)
+            else:
+                result.append(s)
+        return result
+    f = inner_flatten_it if as_iter else inner_flatten_lst
+    return f(seq, ignore)
 
-def iflatten (seq: Sequence, ignore: Sequence[Type] =IGNORED_TYPES) -> Iterable:
-    """Deep-flat $seq, using deque. Works with infinite sequences.
-    $ignore must be a type or a tuple of types to ignore while flattering."""
+
+def iflatten (seq: Sequence,
+              ignore: Sequence[type] = IGNORED_TYPES) -> Iterable:
+    """
+    Deep-flat $seq, using deque. Works with infinite sequences.
+    $ignore must be a type or a tuple of types to ignore while flattering.
+    """
     d = deque((iter(seq),))
     while d:
         x = d[0]
@@ -216,9 +272,10 @@ def iflatten (seq: Sequence, ignore: Sequence[Type] =IGNORED_TYPES) -> Iterable:
         else:
             d.popleft()
 
+    
 def diflatten (seq: Sequence,
-               ignore: Sequence[Type] =IGNORED_TYPES,
-               maxdepth: Union[int,float] =float('+inf')) -> Iterable:
+               ignore: Sequence[type] = IGNORED_TYPES,
+               maxdepth: int|float = float('+inf')) -> Iterable:
     """Deep-flat $seq using deque. Works with infinite sequences.
     $ignore must be a type object, or a tuple of types,
     which will not be flattered.
@@ -376,8 +433,9 @@ def _test_out():
             fout = list(f(input))
             assert fout == output, f'[FAIL]: {f.__name__}: out: {fout} != {output}'
     lst = mklst_to_depth(10)
-    for f in (dflatten,):
-        assert f(lst) == list(f(lst, as_iter=True)), f'[FAIL]: {f.__name__}: as_iter=True'
+    for f in (dflatten,flatten):
+        assert list(f(lst)) == list(f(lst, as_iter=True)), f'[FAIL]: {f.__name__}: as_iter=True'
+        assert list(f(lst)) == f(lst, as_iter=False), f'[FAIL]: {f.__name__}: as_iter=False'
     _in, _out, _out_ig_str, _out_ig_lst = (
         [1, 2,'foo', 3, [1]], [1, 2,'f','o','o', 3, 1], [1, 2,'foo', 3, 1], [1, 2,'foo', 3, [1]])
     for f in (flatten, dflatten, iflatten, diflatten):
@@ -452,15 +510,20 @@ def _test_times(depth=1000, repeats=100):
     l = [0,[0,0,0]]
     l = mklst_to_depth(depth)
     r = repeats
-    _report = '{:<18} {:.4f}s'
+    _report = '{:<25} {:.4f}s'
     print('*** Test times:')
     print(f'** config: list depth={depth} | repeats={repeats}')
+
+    t = timeit.Timer('list(flatten(l, as_iter=True))', 'from __main__ import flatten', globals=locals()).timeit(r)
+    print(_report.format('flatten (as_iter=True):', t/r))
+    t = timeit.Timer('flatten(l, as_iter=False)', 'from __main__ import flatten', globals=locals()).timeit(r)
+    print(_report.format('flatten (as_iter=False):', t/r))
+    t = timeit.Timer('list(dflatten(l, as_iter=True))', 'from __main__ import dflatten', globals=locals()).timeit(r)
+    print(_report.format('dflatten (as_iter=True):', t/r))
+    t = timeit.Timer('dflatten(l, as_iter=False)', 'from __main__ import dflatten', globals=locals()).timeit(r)
+    print(_report.format('dflatten (as_iter=False):', t/r))
     t = timeit.Timer('list(iflatten(l))', 'from __main__ import iflatten', globals=locals()).timeit(r)
     print(_report.format('iflatten:', t/r))
-    t = timeit.Timer('list(flatten(l))', 'from __main__ import flatten', globals=locals()).timeit(r)
-    print(_report.format('flatten:', t/r))
-    t = timeit.Timer('dflatten(l)', 'from __main__ import dflatten', globals=locals()).timeit(r)
-    print(_report.format('dflatten:', t/r))
     t = timeit.Timer('list(diflatten(l))', 'from __main__ import diflatten', globals=locals()).timeit(r)
     print(_report.format('diflatten:', t/r))
     #################################
