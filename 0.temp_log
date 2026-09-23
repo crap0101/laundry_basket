@@ -2,6 +2,7 @@
 # script (/usr/local/sbin/hw_temp.sh):
 ( /usr/bin/date +'%Y-%m-%d %H:%M:%S' ;
   echo "---- SMARTCTL ----" ;
+  # can be run as normal user, without smartctl
   if [ $UID -ne 0 ]; then
       echo "*** NOTE: smartctl requires root"
   fi
