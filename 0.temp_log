@@ -2,6 +2,9 @@
 # script (/usr/local/sbin/hw_temp.sh):
 ( /usr/bin/date +'%Y-%m-%d %H:%M:%S' ;
   echo "---- SMARTCTL ----" ;
+  if [ $UID -ne 0 ]; then
+      echo "*** NOTE: smartctl requires root"
+  fi
   for disk in /dev/sd[abc] ; do
     smartctl -a  "$disk" | awk -v disk="$disk" '/^194/ {
         printf "%s: %.1f°C\n", disk, $10}' ;
