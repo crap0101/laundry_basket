@@ -192,7 +192,7 @@ class BrutalSpell:
             else:
                 json.dump(tuple(self._data), out)
 
-    def write_as (): #XXX+TODO: raw, json, ...
+    def write_as (): #XXX+TODO: choose raw, json, ...
         pass
 
 
