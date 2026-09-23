@@ -531,7 +531,7 @@ if __name__ == "__main__":
 
     def test_func (args): #XXX+TODO: more test
         import timeit
-        def test_load (): #XXX: rename: load and load time...
+        def test_load (): #XXX: rename: load to load time... (or...)
             for _ in range(args.number):
                 bc = BrutalSpell(args.input_file, args.raw_input)
                 del bc
