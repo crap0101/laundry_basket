@@ -1,7 +1,7 @@
 #!/bin/bash
 # run ssh agent
 
-# Copyright (C) 2026  Marco Chieppa aka crao9191
+# Copyright (C) 2026  Marco Chieppa aka crap0101
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
