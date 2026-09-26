@@ -29,15 +29,15 @@ function ssh_check_and_run () {
     function ssh_start_agent () {
         # @param: target socket
         printto "*** ssh: creating a new ssh agent"
-        ssh-agent -s -a $2 | sed 's/^echo/#echo/' > $1
-        chmod 600 $1
+        ssh-agent -s -a "$2" | sed 's/^echo/#echo/' > "$1"
+        chmod 600 "$1"
     }
     function update_ssh () {
         # @param: target sock pid
         printto "*** ssh: updating $1 with sock:$2 ; pid:$3"
-        echo "SSH_AUTH_SOCK=$2; export SSH_AUTH_SOCK" > $1
-        echo "SSH_AGENT_PID=$3; export SSH_AGENT_PID" >> $1
-        chmod 600 $1
+        echo "SSH_AUTH_SOCK=$2; export SSH_AUTH_SOCK" > "$1"
+        echo "SSH_AGENT_PID=$3; export SSH_AGENT_PID" >> "$1"
+        chmod 600 "$1"
     }
     # files to save agent info and default socket
     if [ -n "$1" ]; then
@@ -61,19 +61,19 @@ function ssh_check_and_run () {
     if [ ! -f "$target" ]; then
         # check if the default socket exists
         printto "*** ssh: no target file"
-        ssh_start_agent $target $static_socket
+        ssh_start_agent "$target" "$static_socket"
     else
         # get the time from the last login and, if newer than the target file,
         # starts the agent ('cause probably we're reboot the system).
         local lastlog="$(loginctl show-session $XDG_SESSION_ID --property=Timestamp --value)"
         local logtime=$(date -d "$lastlog" +%s)
-        local ttime=$(stat -c %X $target)
+        local ttime=$(stat -c %X "$target")
 
         if [ "$logtime" -gt "$ttime" ]; then
             printto "*** ssh: target file is old than this login session, start a new agent"
-            ssh_start_agent $target $static_socket
+            ssh_start_agent "$target" "$static_socket"
         else
-            local spid="$(awk -F '[=;]' '$1 ~ /^SSH_AGENT_PID/ {print $2}' $target)"
+            local spid="$(awk -F '[=;]' '$1 ~ /^SSH_AGENT_PID/ {print $2}' "$target")"
             local effective_spid=$(pgrep -nx ssh-agent)
             local proc_state=$(ps -eo pid,state | awk "\$1 == $effective_spid { print \$2 }")
 
@@ -81,14 +81,14 @@ function ssh_check_and_run () {
             # and if the process is not a zombie or alike (non [ZT]).
             if [ -z "$effective_spid" ] || [[ $proc_state =~ ^[ZT]$ ]]; then
                 printto "*** ssh: no pid or proc is zombie"
-                ssh_start_agent $target $static_socket
+                ssh_start_agent "$target" "$static_socket"
             elif [ -z "$spid" ]; then
                 printto "*** ssh: no pid found!"
-                ssh_start_agent $target $static_socket
+                ssh_start_agent "$target" "$static_socket"
             else
                 printto "*** ssh: saved/effective pid: $spid/$effective_spid"
                 # NOTE: before using $static_socket... it's all so fragile...
-                #local sock="$(awk -F '[=;]' '$1 ~ /^SSH_AUTH_SOCK/ {print $2}' $target)"
+                #local sock="$(awk -F '[=;]' '$1 ~ /^SSH_AUTH_SOCK/ {print $2}' "$target")"
                 #local effective_sock=$(find /tmp/ssh-* -user $USER -name "agent.*" -printf "%C@ %p\n" 2>/dev/null | sort -rn | head -n1 | awk '{print $2}')
                 if [ "$spid" != "$effective_spid" ]; then
                     printto "*** ssh: wrong process id: $spid != $effective_spid (effective)"
@@ -101,16 +101,16 @@ function ssh_check_and_run () {
         # NOTE: before using $static_socket; as above...
         # if [ "$sock" != "$effective_sock" ]; then
         #     echo "*** ssh: wrong socket: $sock != $effective_sock (effective)"
-        #     export SSH_AUTH_SOCK=$effective_sock
+        #     export SSH_AUTH_SOCK="$effective_sock"
         #     (( do_update++ ))
         # fi
 
         if [ "$do_update" -gt 0 ]; then
-            update_ssh $target $SSH_AUTH_SOCK $SSH_AGENT_PID
+            update_ssh "$target" "$SSH_AUTH_SOCK" $SSH_AGENT_PID
         fi
     fi
 
-    source $target
+    source "$target"
 
     # check with ssh-add
     ssh-add -l &>/dev/null
@@ -136,7 +136,7 @@ SYNOPSIS: $(basename "$0") [OPTION]
 DESCRIPTION: checks for a running ssh-agent, or runs a new one
     ...
     -e FILE    environment file, default to "$HOME/.ssh/agent.env"
-    -s FILE    socket file, efault to "$HOME/.ssh/agent.env"
+    -s FILE    socket file, default to "$HOME/.ssh/agent.env"
     -h         show this help and exit.
 
 EXAMPLES:
@@ -149,13 +149,13 @@ HELP
 
     while getopts "e:s:h" arg
     do
-        case $arg in
+        case "$arg" in
             e)  env_file="$OPTARG"
                 ;;
             s)  sock_file="$OPTARG"
 	            ;;
             *|h)
-	        usage $0
+	        usage "$0"
             exit 0
         esac
     done
