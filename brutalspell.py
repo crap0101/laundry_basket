@@ -18,6 +18,7 @@
 # along with this program; if not see <http://www.gnu.org/licenses/>
 
 from __future__ import annotations # for annotation of Trie in the class itself
+from collections import deque
 from collections.abc import Iterable, Sequence
 import json
 import traceback
@@ -299,6 +300,10 @@ class Trie:
             return True
         return False
 
+    def has_key (self, k: Any) -> bool:
+        """Return True if this Trie has the *k* key."""
+        return k in self.subt
+
     def has_keys (self) -> bool:
         """Returns True if this Trie has keys."""
         try:
@@ -307,10 +312,34 @@ class Trie:
         except StopIteration:
             return False
 
+    def items (self) -> Sequence[Any]:
+        """Returns the items of the underlying data."""
+        return self.subt.items()
+
     def keys (self) -> Any:
         """Yields the keys of this Trie."""
         for k in self.subt:
             yield k
+
+    def prefix (self, prefix: Seq) -> Iterable[Any]:
+        """
+        Yields elements of this trie with the given *prefix*.
+        """
+        return Trie.trie_prefix(self, prefix)
+    @staticmethod
+    def trie_prefix (trie: Trie, prefix: Seq) -> Iterable[Any]:
+        """
+        Yields elements of *trie* with the given *prefix*.
+        """
+        t = trie
+        pfx = []
+        for e in prefix:
+            if not t.has_key(e):
+                return
+            pfx.append(e)
+            t = t[e]
+        for e in t.toiter():
+            yield pfx + e
 
     @property
     def recursive (self):
@@ -326,8 +355,8 @@ class Trie:
             self.search = self._search_rec
             self.iter = self._iter_rec
             self.tolist = self._tolist_rec
-
-    def remove (self, seq: Any) -> bool:
+            
+    def remove (self, seq: Seq) -> bool:
         """
         Removes *seq* from this Trie.
         Returns True for succerfull removal.
@@ -338,7 +367,7 @@ class Trie:
             return True
         return False
     @staticmethod
-    def trie_remove (trie: Trie, seq: Any) -> bool:
+    def trie_remove (trie: Trie, seq: Seq) -> bool:
         """
         Removes *seq* from *trie*.
         Returns True for succerfull removal.
@@ -355,36 +384,36 @@ class Trie:
             return False
         if t.END:
             t.END = False
-            if not t.has_keys(): #if not list(t.keys()):
+            if not t.has_keys():
                 for t, e in reversed(prev):
                     del t[e]
-                    if t.END or t.has_keys(): #list(t.keys()):
+                    if t.END or t.has_keys():
                         break
             return True
         else:
             return False
 
-    def search (self, seq: Any):
+    def search (self, seq: Seq):
         """
         Returns True if *seq* is in this trie.
         Placeholder, assigned to the proper method in the __init__.
         """
         raise NotImplementedError
-    def _search_it (self, seq: Any) -> bool:
+    def _search_it (self, seq: Seq) -> bool:
         # iterative method
         """
         Returns True if *seq* is in this trie.
         This is the Iterative version, slower but more safe.
         """
         return Trie.trie_search_it(self, seq)
-    def _search_rec (self, seq: Any) -> bool:
+    def _search_rec (self, seq: Seq) -> bool:
         # recursive method
         """
         Returns True if *seq* is in this trie.
         """
         return Trie.trie_search_rec(self, seq)
     @staticmethod
-    def trie_search_it (trie: Trie, seq: Any) -> bool:
+    def trie_search_it (trie: Trie, seq: Seq) -> bool:
         # iterative
         """
         Returns True if *seq* is in *trie*.
@@ -417,6 +446,18 @@ class Trie:
             return Trie.trie_search_rec(trie[c], c)
         except KeyError:
             return False
+
+    def toiter (self):
+        return Trie.trie_to_iter(self)
+    @staticmethod
+    def trie_to_iter (trie: Trie) -> Iterator[Any]:
+        stack = deque([[trie, []]])
+        while stack:
+            t, lst = stack.popleft()
+            for k, v in t.items():
+                if v.END:
+                    yield (lst + [k])
+                stack.append([v, lst + [k]])
 
     def tolist (self) -> list[Any]:
         """
@@ -478,6 +519,18 @@ class WTrie (Trie):
         return list(''.join(e) for e in super()._tolist_it())
     def _tolist_rec (self):
         return list(''.join(e) for e in super()._tolist_rec())
+
+    def toiter (self):
+        for s in Trie.trie_to_iter(self):
+            yield ''.join(s)
+
+    def prefix (self, prefix: Seq) -> Iterable[Str]:
+        """
+        Yields elements of this trie with the given *prefix*.
+        """
+        for s in super().prefix(prefix):
+            yield ''.join(s)
+
 
 
 if __name__ == "__main__":
@@ -587,6 +640,12 @@ EXIT STATUS:
 
     _examples = """EXAMPLES:
 
+#
+#
+# Trie
+#
+#
+
 >>> from brutalspell import Trie
 ... 
 >>> t = Trie('foo')
@@ -630,6 +689,12 @@ True
 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
+#
+#
+# WTrie
+#
+#
+
 >>> from brutalspell import WTrie
 >>> t = WTrie('foo')
 >>> t.update(['eggs', 'baz'])
@@ -661,6 +726,65 @@ KeyError: 'x'
 >>> list(t['f'])
 [['o', 'o'], ['o', 'o', 'b', 'a', 'r']]
 
+
+#
+#
+# *Trie prefixes
+#
+#
+
+>>> t = Trie(range(10))
+>>> t.add(range(50,60))
+True
+>>> t.add(range(5))
+True
+>>> list(t)
+[[0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [50, 51, 52, 53, 54, 55, 56, 57, 58, 59]]
+>>> list(t.trie_prefix(t, (0,1,2,3)))
+[[0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
+>>> list(t.trie_prefix(t, (2,3)))
+[]
+>>> t = WTrie('foo')
+>>> t.add('spam')
+True
+>>> t.add('foobar')
+True
+>>> t.add('oo')
+True
+>>> list(t)
+['foo', 'foobar', 'spam', 'oo']
+>>> list(t.prefix('fo'))
+['foo', 'foobar']
+
+#
+#
+# *Trie toiter()
+#
+#
+
+>>> t = Trie('foo')
+>>> t.add(range(9))
+True
+>>> t.add((Trie,WTrie))
+True
+>>> list(t)
+[['f', 'o', 'o'], [0, 1, 2, 3, 4, 5, 6, 7, 8], [<class 'brutalspell.Trie'>, <class 'brutalspell.WTrie'>]]
+>>> t.toiter()
+<generator object Trie.trie_to_iter at 0x7f00a5c5f740>
+>>> list(t.toiter())
+[[<class 'brutalspell.Trie'>, <class 'brutalspell.WTrie'>], [0, 1, 2, 3, 4, 5, 6, 7, 8], ['f', 'o', 'o']]
+>>> t = WTrie('egg')
+>>> t.add('spam')
+True
+>>> list(t.toiter())
+['spam', 'egg']
+
+
+#
+#
+# BrutalSpell
+#
+#
 
 >>> from brutalspell import BrutalSpell
 >>> b = BrutalSpell('/usr/share/dict/words', True)
