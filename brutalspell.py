@@ -19,7 +19,7 @@
 
 from __future__ import annotations # for annotation of Trie in the class itself
 from collections import deque
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 import json
 import traceback
 from typing import Any, Union
@@ -429,21 +429,19 @@ class Trie:
     def trie_search_rec (trie: Trie, seq: Seq) -> bool:
         # recursive
         """Returns True if *trie* contains *seq*."""
-        if not seq:
-            if trie.END:
-                return True
-            return False
         try:
             c = seq[0]
+        except IndexError:
+            return trie.END
         except TypeError:
             try:
                 c = next(seq)
             except StopIteration:
-                return False
+                return trie.END
         try:
             return Trie.trie_search_rec(trie[c], seq[1:])
         except TypeError:
-            return Trie.trie_search_rec(trie[c], c)
+            return Trie.trie_search_rec(trie[c], seq)
         except KeyError:
             return False
 
