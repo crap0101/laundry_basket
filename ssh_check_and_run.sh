@@ -28,7 +28,7 @@ function ssh_check_and_run () {
     # you just need to press play.
     function ssh_start_agent () {
         # @param: target socket
-        printto "*** ssh: creating a new ssh agent"
+        printto "*** ssh: creating a new ssh agent ($2) in $1"
         ssh-agent -s -a "$2" | sed 's/^echo/#echo/' > "$1"
         chmod 600 "$1"
     }
@@ -59,8 +59,9 @@ function ssh_check_and_run () {
     fi
 
     if [ ! -f "$target" ]; then
-        # check if the default socket exists
+        # check if the default env exists
         printto "*** ssh: no target file"
+        rm "$static_socket"
         ssh_start_agent "$target" "$static_socket"
     else
         # get the time from the last login and, if newer than the target file,
@@ -70,7 +71,8 @@ function ssh_check_and_run () {
         local ttime=$(stat -c %X "$target")
 
         if [ "$logtime" -gt "$ttime" ]; then
-            printto "*** ssh: target file is old than this login session, start a new agent"
+            printto "*** ssh: target file is old than this login session, start a new agent (and removing the old file)"
+            rm "$static_socket"
             ssh_start_agent "$target" "$static_socket"
         else
             local spid="$(awk -F '[=;]' '$1 ~ /^SSH_AGENT_PID/ {print $2}' "$target")"
@@ -81,9 +83,11 @@ function ssh_check_and_run () {
             # and if the process is not a zombie or alike (non [ZT]).
             if [ -z "$effective_spid" ] || [[ $proc_state =~ ^[ZT]$ ]]; then
                 printto "*** ssh: no pid or proc is zombie"
+                rm "$static_socket"
                 ssh_start_agent "$target" "$static_socket"
             elif [ -z "$spid" ]; then
                 printto "*** ssh: no pid found!"
+                rm "$static_socket"
                 ssh_start_agent "$target" "$static_socket"
             else
                 printto "*** ssh: saved/effective pid: $spid/$effective_spid"
@@ -97,13 +101,6 @@ function ssh_check_and_run () {
                 fi
             fi
         fi
-
-        # NOTE: before using $static_socket; as above...
-        # if [ "$sock" != "$effective_sock" ]; then
-        #     echo "*** ssh: wrong socket: $sock != $effective_sock (effective)"
-        #     export SSH_AUTH_SOCK="$effective_sock"
-        #     (( do_update++ ))
-        # fi
 
         if [ "$do_update" -gt 0 ]; then
             update_ssh "$target" "$SSH_AUTH_SOCK" $SSH_AGENT_PID
