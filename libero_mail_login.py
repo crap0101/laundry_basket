@@ -8,14 +8,18 @@
 import getpass
 import time
 
+# NON-stdlib imports
+
 # https://github.com/crap0101/py_warnings
 from py_warnings import pywarn
 
 try:
+    # https://github.com/jaraco/keyring
     import keyring
     KEYRING_OK = True
 except ImportError:
     KEYRING_OK = False
+# https://github.com/SeleniumHQ/selenium/
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -217,7 +221,7 @@ if __name__ == '__main__':
         if args.passwords or args.ask_pw:
             args.passwords = []
             args.ask_pw = None
-        warn("using -c option, ignoring -p and -P options")
+            warn("using -c option, ignoring -p and -P options")
         if args.services:
             args.services = []
             warn("using -c option, ignoring -s option")
