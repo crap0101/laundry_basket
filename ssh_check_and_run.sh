@@ -17,7 +17,7 @@
 # along with this program; if not see <http://www.gnu.org/licenses/>
 
 
-function ssh_check_and_run () {
+function ssh_check_and_run () { # @param: env_file sock_file verbose_mode
     # It seemed simple,
     # it seemed safe,
     # it seemed stample
@@ -50,6 +50,11 @@ function ssh_check_and_run () {
     else
         local static_socket="$HOME/.ssh/agent.sock"
     fi
+    if [ -z "$3" ]; then
+        local verbose_out=/dev/null
+    else
+        local verbose_out=/dev/stdout
+    fi
     local do_update=0
 
     if [[ "$SSH_AUTH_SOCK" =~ .*keyring/ssh ]]; then
@@ -61,7 +66,7 @@ function ssh_check_and_run () {
     if [ ! -f "$target" ]; then
         # check if the default env exists
         printto "*** ssh: no target file"
-        rm "$static_socket"
+        rm "$static_socket" &>/dev/null || printto "*** rm[0]: socket $static_socket not found" verbose_out
         ssh_start_agent "$target" "$static_socket"
     else
         # get the time from the last login and, if newer than the target file,
@@ -72,7 +77,7 @@ function ssh_check_and_run () {
 
         if [ "$logtime" -gt "$ttime" ]; then
             printto "*** ssh: target file is old than this login session, start a new agent (and removing the old file)"
-            rm "$static_socket"
+            rm "$static_socket" &>/dev/null || printto "*** rm[1]: socket $static_socket not found" verbose_out
             ssh_start_agent "$target" "$static_socket"
         else
             local spid="$(awk -F '[=;]' '$1 ~ /^SSH_AGENT_PID/ {print $2}' "$target")"
@@ -83,11 +88,11 @@ function ssh_check_and_run () {
             # and if the process is not a zombie or alike (non [ZT]).
             if [ -z "$effective_spid" ] || [[ $proc_state =~ ^[ZT]$ ]]; then
                 printto "*** ssh: no pid or proc is zombie"
-                rm "$static_socket"
+                rm "$static_socket" &>/dev/null || printto "*** rm[2]: socket $static_socket not found" verbose_out
                 ssh_start_agent "$target" "$static_socket"
             elif [ -z "$spid" ]; then
                 printto "*** ssh: no pid found!"
-                rm "$static_socket"
+                rm "$static_socket" &>/dev/null || printto "*** rm[3]: socket $static_socket not found" verbose_out
                 ssh_start_agent "$target" "$static_socket"
             else
                 printto "*** ssh: saved/effective pid: $spid/$effective_spid"
@@ -134,6 +139,7 @@ DESCRIPTION: checks for a running ssh-agent, or runs a new one
     ...
     -e FILE    environment file, default to "$HOME/.ssh/agent.env"
     -s FILE    socket file, default to "$HOME/.ssh/agent.env"
+    -v         more verbose.
     -h         show this help and exit.
 
 EXAMPLES:
@@ -144,13 +150,15 @@ EXAMPLES:
 HELP
     }
 
-    while getopts "e:s:h" arg
+    while getopts "e:s:vh" arg
     do
         case "$arg" in
             e)  env_file="$OPTARG"
                 ;;
             s)  sock_file="$OPTARG"
 	            ;;
+            v) verbose=1
+               ;;
             *|h)
 	        usage "$0"
             exit 0
@@ -162,7 +170,7 @@ HELP
     do
         echo "WARNING: ignoring unknown argument $arg"
     done
-    ssh_check_and_run "$env_file" "$sock_file"
+    ssh_check_and_run "$env_file" "$sock_file" "$verbose"
 else
     :
 fi
