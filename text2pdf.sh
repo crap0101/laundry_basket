@@ -69,6 +69,11 @@ shift $(($OPTIND - 1))
 input_file="$1"
 tmp_file="${input_file%.*}.html"
 
+if [ ! -r "$input_file" ]; then
+    echo "ERROR: file not found or unreadable: $input_file"
+    exit 1
+fi
+
 if [ ! $_q ]; then 
     echo "converting $input_file (tmp_file is: $tmp_file)"
 fi
