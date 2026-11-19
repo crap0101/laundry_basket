@@ -38,8 +38,8 @@ def get_args (cmdline=None):
                          ' behaviour. Default: "%(default)s"'))
     p.add_argument('-i', '--ignore-exists',
                    dest='replace', action='store_true',
-                   help='''continue even if DEST (or any files to be copied in)
-                   already exists; existing files will be replaced.''')
+                   help='''continue even if any files to be copied in DEST
+                   already exists (will be replaced).''')
     e = p.add_mutually_exclusive_group()
     e.add_argument('-e', '--add-extensions',
                    dest='add_exts', nargs='+', metavar='EXT',
@@ -218,10 +218,11 @@ if __name__ == '__main__':
         exts = _EXTS
     dest = os.path.join(orig, urllib.parse.unquote(args.dest))
     try:
-        os.makedirs(dest)
+        os.makedirs(dest, exist_ok=True)
     except OSError as err:
-        if err.errno == errno.EEXIST and not args.replace:
-            raise err
-        elif err.errno != errno.EEXIST:
-            raise err
+        raise err
+        # if err.errno == errno.EEXIST and not args.replace:
+        #     raise err
+        # elif err.errno != errno.EEXIST:
+        #     raise err
     move(get_paths(orig, exts), dest, args.replace)
