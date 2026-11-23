@@ -36,5 +36,5 @@ if [ $# -eq 0 ]; then
 fi
 
 for file in "$@"; do
-    exiv2 -r "${format_string}_:basename:" "$file"
+    exiv2 -r "${format_string}:basename:" "$file"
 done
